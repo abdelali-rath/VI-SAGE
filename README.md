@@ -10,7 +10,7 @@
 ## Features ✨
 - Multi-task model: **age** (regression / ordinal), **gender** (binary), **ethnicity** (multi-class)  
 - Transfer learning on modern CNN backbones
-- Fast realtime demo (OpenCV + Streamlit / PyQt + TorchScript) with overlayed predictions ▶️
+- Fast realtime demo (OpenCV + Streamlit / PyQt + TorchScript) with overlayed predictions
 - Built-in ethics & privacy guidance
 
 ---
