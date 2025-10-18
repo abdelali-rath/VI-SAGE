@@ -1,4 +1,4 @@
-# ∀I-SAGE — Universal / Intelligent Facial Attribute GE**stimation** 🔍🧠
+# ∀I-SAGE — Universal / Intelligent Facial Attribute Estimation* 🔍🧠
 
 
 **∀I-SAGE** is a research & demo project that estimates **age**, **gender**, and **ethnicity** from face images in real time. It implements a multi-task deep learning system and provides a live webcam demo for interactive presentations (e.g., conferences).
