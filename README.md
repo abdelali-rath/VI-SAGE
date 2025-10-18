@@ -93,12 +93,14 @@ Predicting sensitive attributes (e.g., ethnicity) is controversial and can be ha
 3. Do not release raw face images or identifiable data.
 4. Use the demo only for research/education; attendees can opt out.
 5. Include a visible ethics note on all demo screens.
+
 The final report must include a thorough ethics & impact discussion.
 
 ## Team & contact 📬
 
 Project: ∀I-SAGE
 Team: Abdelali Oumachi, Aleem Hussein, Ibrahim Jaha
+
 Contact: abdelali.oumachi@study.hs-duesseldorf.de, aleem.hussein@study.hs-duesseldorf.de, ibrahim.jaha@study.hs-duesseldorf.de
 
 # ⚠️ Important: This repository is for research & educational use. Use responsibly and respect privacy & consent.
