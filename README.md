@@ -35,7 +35,7 @@ Target latency: **x s per frame**.
 - Streamlit or PyQt5 for demo
 - (Optional) NVIDIA GPU + CUDA for training
 
-Create & activate venv:
+### Create & activate venv:
 ```bash
 python -m venv .venv
 # macOS / Linux
@@ -44,7 +44,7 @@ source .venv/bin/activate
 .venv\Scripts\Activate.ps1
 ```
 
-Install dependencies:
+### Install dependencies:
 ```bash
 pip install -r requirements.txt
 ```
