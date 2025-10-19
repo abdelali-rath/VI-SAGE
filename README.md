@@ -99,8 +99,8 @@ The final report must include a thorough ethics & impact discussion.
 ## Team & contact 📬
 
 Project: ∀I-SAGE
-Team: Abdelali Oumachi, Aleem Hussein, Ibrahim Jaha
+Team: Abdelali Oumachi, Aleem Hussain, Ibrahim Jaha
 
-Contact: abdelali.oumachi@study.hs-duesseldorf.de, aleem.hussein@study.hs-duesseldorf.de, ibrahim.jaha@study.hs-duesseldorf.de
+Contact: abdelali.oumachi@study.hs-duesseldorf.de, aleem.hussain@study.hs-duesseldorf.de, ibrahim.jaha@study.hs-duesseldorf.de
 
 # ⚠️ Important: This repository is for research & educational use. Use responsibly and respect privacy & consent.
