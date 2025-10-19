@@ -3,7 +3,7 @@
 
 **∀I-SAGE** is a research & demo project that estimates **age**, **gender**, and **ethnicity** from face images in real time. It implements a multi-task deep learning system and provides a live webcam demo for interactive presentations (e.g., conferences).
 
-<img width="1000" height="1000" alt="VISAGE Logo Concept 3" src="https://github.com/user-attachments/assets/2d0ecbd7-16dc-4db0-abca-355e720a79da" />
+<img width="856" height="856" alt="VISAGE Logo Concept 3 2" src="https://github.com/user-attachments/assets/af50a2d4-1fcd-4718-a21f-d60cb28081be" />
 
 ---
 
