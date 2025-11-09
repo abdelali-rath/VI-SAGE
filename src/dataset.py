@@ -3,6 +3,7 @@ Smaaaaaaaall Dataset loader for faces. Expects pre-cropped face images in folder
 Not for actual training
 """
 
+
 from torch.utils.data import Dataset
 from torchvision import transforms
 from PIL import Image

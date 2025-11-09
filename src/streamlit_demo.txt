@@ -1,12 +1,8 @@
-# streamlit run src/streamlit_demo.py
 """
-Improved live demo for ∀I-SAGE.
-
-Goals:
-- Request 1280x720 from browser (media_stream_constraints).
 - Avoid blocking: do face detection only every N frames and cache overlay.
 - Fallback to OpenCV Haar cascade if MTCNN is slow/unavailable.
 """
+
 
 import streamlit as st
 from streamlit_webrtc import webrtc_streamer, VideoTransformerBase

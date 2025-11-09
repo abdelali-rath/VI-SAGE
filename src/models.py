@@ -3,8 +3,9 @@ Lightweight multi-task model (age, gender, ethnicity).
 This file provides:
 - build_base_backbone(...) -> (feature_extractor, feature_dim)
 - MultiTaskModel(backbone_name, n_ethnicity_classes)
-- utils to load/save checkpoints
+- checkpoints
 """
+
 
 from typing import Tuple
 import torch

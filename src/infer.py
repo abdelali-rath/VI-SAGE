@@ -5,8 +5,10 @@ Features:
 - automatically chooses device = "cuda" if available
 - supports optional use_fp16 (autocast) for GPU speedups
 - helper to export the PyTorch model to ONNX
-- ONNXRuntime-based inference class which will use GPU provider if installed
+- ONNX Runtime-based inference class which will use GPU provider if installed
 """
+
+
 import sys, os
 sys.path.append(os.path.dirname(__file__))
 

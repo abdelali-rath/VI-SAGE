@@ -3,6 +3,7 @@ Small training script (debug / quickstart).
 Just constructs the MultiTaskModel and runs a few epochs on the provided dataset folder (FaceFolderDataset).
 """
 
+
 import argparse
 import torch
 from torch.utils.data import DataLoader
