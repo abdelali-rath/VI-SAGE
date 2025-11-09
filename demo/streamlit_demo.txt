@@ -1,0 +1,54 @@
+import streamlit as st
+import cv2
+import threading
+import time
+import os
+import sys
+
+st.set_page_config(page_title="∀I-SAGE Demo", layout="wide")
+st.title("∀I-SAGE – Live Demo")
+
+st.write("Press **Start** to open your webcam. Press **Stop** or close the tab to end the demo.")
+
+frame_placeholder = st.image([])
+run_flag = threading.Event()
+
+def camera_loop():
+    cap = cv2.VideoCapture(0, cv2.CAP_DSHOW)
+    cap.set(cv2.CAP_PROP_FRAME_WIDTH, 1280)
+    cap.set(cv2.CAP_PROP_FRAME_HEIGHT, 720)
+
+    while run_flag.is_set():
+        ret, frame = cap.read()
+        if not ret:
+            continue
+        frame = cv2.flip(frame, 1)
+        frame_placeholder.image(frame, channels="BGR")
+        time.sleep(0.02)
+
+    cap.release()
+    cv2.destroyAllWindows()
+
+# --- Buttons ---
+start = st.button("▶ Start Camera")
+stop = st.button("⏹ Stop Demo")
+
+if start and not run_flag.is_set():
+    run_flag.set()
+    threading.Thread(target=camera_loop, daemon=True).start()
+    st.success("Camera started")
+
+if stop:
+    run_flag.clear()
+    st.warning("Demo stopped.")
+    time.sleep(1)
+    os._exit(0)
+
+# Automatically close if user closes the tab
+st.markdown("""
+<script>
+window.addEventListener('beforeunload', () => {
+    fetch('/_stcore/stop', {method: 'POST'});
+});
+</script>
+""", unsafe_allow_html=True)
