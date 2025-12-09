@@ -18,6 +18,7 @@ import torch
 import numpy as np
 from queue import Queue, Empty
 from PIL import Image
+import platform
 
 # inference
 from src.infer import get_best_inference
@@ -85,22 +86,51 @@ status_bar = st.empty()
 
 # ---------------- HELPERS ----------------
 def has_cv2_cuda():
+    if platform.system().lower() == "darwin":
+        return False
     try:
         return cv2.cuda.getCudaEnabledDeviceCount() > 0
     except Exception:
         return False
 
 def load_dnn_detector(proto_path, model_path, try_use_cuda=True):
+    # DNN face model files must exist
     if not os.path.exists(proto_path) or not os.path.exists(model_path):
         raise FileNotFoundError("DNN face model files not found.")
+
     net = cv2.dnn.readNet(proto_path, model_path)
-    if try_use_cuda and has_cv2_cuda():
+
+    import platform
+    system = platform.system().lower()
+
+    if try_use_cuda and has_cv2_cuda() and system != "darwin":
         try:
             net.setPreferableBackend(cv2.dnn.DNN_BACKEND_CUDA)
             net.setPreferableTarget(cv2.dnn.DNN_TARGET_CUDA)
+            print("DNN: CUDA backend enabled")
+            return net
         except Exception:
             pass
+
+    if system == "darwin":
+        try:
+            net.setPreferableBackend(cv2.dnn.DNN_BACKEND_OPENCV)
+            net.setPreferableTarget(cv2.dnn.DNN_TARGET_CPU)
+            print("DNN: macOS CPU backend enabled")
+        except Exception:
+            pass
+        return net
+
+    # CPU fallback for all other systems
+    try:
+        net.setPreferableBackend(cv2.dnn.DNN_BACKEND_OPENCV)
+        net.setPreferableTarget(cv2.dnn.DNN_TARGET_CPU)
+        print("DNN: CPU fallback backend enabled")
+    except Exception:
+        pass
+
     return net
+
 
 def detect_dnn(net, frame_bgr, conf_threshold=0.5, in_size=300):
     h, w = frame_bgr.shape[:2]
@@ -136,7 +166,15 @@ def detect_haar(cascade, frame_bgr, scale_factor=1.1, min_neighbors=5):
 # ---------------- THREADS ----------------
 def capture_thread_fn(device_index=0):
     global latest_frame
-    cap = cv2.VideoCapture(device_index, cv2.CAP_DSHOW)
+    import platform
+    system = platform.system().lower()
+
+    if system == "windows":
+        cap = cv2.VideoCapture(device_index, cv2.CAP_DSHOW)
+    elif system == "darwin":
+        cap = cv2.VideoCapture(device_index, cv2.CAP_AVFOUNDATION)
+    else:
+        cap = cv2.VideoCapture(device_index)
     cap.set(cv2.CAP_PROP_FRAME_WIDTH, CAP_WIDTH)
     cap.set(cv2.CAP_PROP_FRAME_HEIGHT, CAP_HEIGHT)
     # reduce internal buffer if supported
