@@ -18,6 +18,27 @@ gender_model = GenderInference(
     device="cpu"
 )
 
+def gender_worker():
+    while not stop_event.is_set():
+        try:
+            pil_img, face_id = gender_queue.get(timeout=0.2)
+        except:
+            continue
+
+        try:
+            # --- Convert PIL → Tensor (fix) ---
+            img = pil_img.resize((128, 128))
+            img = np.array(img).astype("float32") / 255.0
+            img = torch.from_numpy(img).permute(2, 0, 1).unsqueeze(0)  # (1,3,128,128)
+
+            result = gender_model.predict(img)
+            gender_results[face_id] = result
+
+        except Exception as e:
+            print("Gender worker error:", e)
+
+        gender_queue.task_done()
+
 import streamlit as st
 import cv2
 import threading
@@ -32,6 +53,9 @@ import platform
 from src.infer import get_best_inference
 
 # ---------------- CONFIG (defaults) ----------------
+gender_queue = Queue(maxsize=16)
+gender_results = {}
+
 CAP_WIDTH = 1280
 CAP_HEIGHT = 720
 
@@ -373,6 +397,7 @@ def stop_all():
 
 if start_button:
     start_all()
+    threading.Thread(target=gender_worker, daemon=True).start()
     status_bar.markdown("**Status:** Running (capture+detector started)")
 
 if stop_button:
@@ -404,41 +429,25 @@ try:
                 try:
                     x1,y1,x2,y2,score = b
                     cv2.rectangle(annotated, (x1,y1), (x2,y2), (0,255,0), 3)
-                    # ----------- GENDER PREDICTION (standalone MobileNet) -----------
+                    # ----------- GENDER PREDICTION (async) -----------
                     if gender_model is not None:
                         try:
                             crop = annotated[y1:y2, x1:x2]
-
-                            # Convert to RGB
                             crop_rgb = cv2.cvtColor(crop, cv2.COLOR_BGR2RGB)
+                            pil_img = Image.fromarray(crop_rgb)
+                            gender_queue.put_nowait((pil_img, i))
+                        except:
+                            pass
 
-                            # Resize to model input (128x128)
-                            crop_rgb = cv2.resize(crop_rgb, (128, 128))
+                    if i in gender_results:
+                        g_label = gender_results[i]["gender"]
+                        g_conf = gender_results[i]["confidence"]
+                        txt = f"{g_label} ({g_conf:.2f})"
+                        cv2.putText(annotated, txt, (x1, y1 - 10),
+                                    cv2.FONT_HERSHEY_SIMPLEX, 0.7, (0, 255, 255), 2)
 
-                            # Convert to tensor
-                            tensor = torch.from_numpy(crop_rgb).float().permute(2, 0, 1) / 255.0
-                            tensor = tensor.unsqueeze(0)  # batch dimension
-
-                            # Predict
-                            result = gender_model.predict(tensor)
-
-                            g_label = result["gender"]
-                            g_conf = result["confidence"]
-
-                            # Draw label
-                            txt = f"{g_label} ({g_conf:.2f})"
-                            cv2.putText(
-                                annotated,
-                                txt,
-                                (x1, y1 - 10),
-                                cv2.FONT_HERSHEY_SIMPLEX,
-                                0.7,
-                                (0, 255, 255),
-                                2,
-                            )
-                        except Exception as e:
-                            print("Gender prediction error:", e)
-
+                except Exception as e:
+                    print("Gender prediction error:", e)
 
                     if applied_run_estimation and i < len(current_labels) and current_labels[i] is not None:
                         r = current_labels[i]
