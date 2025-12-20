@@ -1,50 +1,62 @@
 import torch
 import torch.nn as nn
-import torchvision.transforms as T
-from PIL import Image
+from torchvision.models import mobilenet_v3_large, MobileNet_V3_Large_Weights
 
-class SimpleGenderModel(nn.Module):
-    def __init__(self, backbone):
+
+class GenderNet(nn.Module):
+    def __init__(self):
         super().__init__()
-        self.backbone = backbone
-        self.fc = nn.Linear(backbone.fc.in_features, 2)  # male/female
-        backbone.fc = nn.Identity()
+
+        # Load MobileNetV3-Large backbone
+        self.backbone = mobilenet_v3_large(weights=None)
+
+        # Remove classification head – we will replace it exactly
+        in_channels = self.backbone.classifier[0].in_features  # 960
+        hidden_dim = self.backbone.classifier[0].out_features  # 1280
+
+        # Rebuild classifier EXACTLY like checkpoint
+        self.backbone.classifier = nn.Sequential(
+            nn.Linear(in_channels, hidden_dim),
+            nn.Hardswish(),
+        )
+
+        # Your gender head (matches checkpoint: 2 classes)
+        self.classifier = nn.Linear(hidden_dim, 2)
 
     def forward(self, x):
-        feats = self.backbone(x)
-        out = self.fc(feats)
-        return out
+        x = self.backbone.features(x)
+        x = self.backbone.avgpool(x)
+        x = torch.flatten(x, 1)
+        x = self.backbone.classifier(x)  # 960 -> 1280
+        x = self.classifier(x)           # 1280 -> 2
+        return x
 
 
-class GenderPredictor:
-    def __init__(self, checkpoint_path, device=None):
-        self.device = device or ("cuda" if torch.cuda.is_available() else "cpu")
+class GenderInference:
+    def __init__(self, checkpoint_path, device="cpu"):
+        self.device = torch.device(device)
+        self.model = GenderNet().to(self.device)
 
-        backbone = torch.hub.load("pytorch/vision", "resnet18", weights="IMAGENET1K_V1")
-        self.model = SimpleGenderModel(backbone)
-        self.model.load_state_dict(torch.load(checkpoint_path, map_location=self.device))
+        # Load checkpoint exactly
+        state = torch.load(checkpoint_path, map_location=self.device)
+
+        # rename nothing -> matches 100%
+        self.model.load_state_dict(state, strict=True)
+
         self.model.eval()
-        self.model.to(self.device)
 
-        self.transform = T.Compose([
-            T.Resize((224, 224)),
-            T.ToTensor(),
-            T.Normalize(
-                [0.485, 0.456, 0.406],
-                [0.229, 0.224, 0.225]
-            )
-        ])
+        self.softmax = nn.Softmax(dim=1)
+        self.classes = ["male", "female"]
 
-        self.labels = ["female", "male"]
+        print("Gender checkpoint loaded successfully.")
 
-    def predict_from_pil(self, img: Image.Image):
-        tensor = self.transform(img).unsqueeze(0).to(self.device)
-        with torch.no_grad():
-            logits = self.model(tensor)
-            probs = torch.softmax(logits, dim=1)
-            conf, pred = torch.max(probs, dim=1)
-
+    @torch.no_grad()
+    def predict(self, img_tensor):
+        img_tensor = img_tensor.to(self.device)
+        logits = self.model(img_tensor)
+        probs = self.softmax(logits)[0]
+        idx = probs.argmax().item()
         return {
-            "gender": self.labels[pred.item()],
-            "confidence": float(conf.item())
+            "gender": self.classes[idx],
+            "confidence": float(probs[idx]),
         }

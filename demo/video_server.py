@@ -8,7 +8,15 @@ in bash
 
 
 import sys, os
-sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
+ROOT = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
+sys.path.append(ROOT)
+
+from src.gender_model import GenderInference
+
+gender_model = GenderInference(
+    checkpoint_path="checkpoints/utk_gender_mobilenet.pt",
+    device="cpu"
+)
 
 import streamlit as st
 import cv2
@@ -396,6 +404,42 @@ try:
                 try:
                     x1,y1,x2,y2,score = b
                     cv2.rectangle(annotated, (x1,y1), (x2,y2), (0,255,0), 3)
+                    # ----------- GENDER PREDICTION (standalone MobileNet) -----------
+                    if gender_model is not None:
+                        try:
+                            crop = annotated[y1:y2, x1:x2]
+
+                            # Convert to RGB
+                            crop_rgb = cv2.cvtColor(crop, cv2.COLOR_BGR2RGB)
+
+                            # Resize to model input (128x128)
+                            crop_rgb = cv2.resize(crop_rgb, (128, 128))
+
+                            # Convert to tensor
+                            tensor = torch.from_numpy(crop_rgb).float().permute(2, 0, 1) / 255.0
+                            tensor = tensor.unsqueeze(0)  # batch dimension
+
+                            # Predict
+                            result = gender_model.predict(tensor)
+
+                            g_label = result["gender"]
+                            g_conf = result["confidence"]
+
+                            # Draw label
+                            txt = f"{g_label} ({g_conf:.2f})"
+                            cv2.putText(
+                                annotated,
+                                txt,
+                                (x1, y1 - 10),
+                                cv2.FONT_HERSHEY_SIMPLEX,
+                                0.7,
+                                (0, 255, 255),
+                                2,
+                            )
+                        except Exception as e:
+                            print("Gender prediction error:", e)
+
+
                     if applied_run_estimation and i < len(current_labels) and current_labels[i] is not None:
                         r = current_labels[i]
                         age = r.get("age", "?")
