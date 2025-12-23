@@ -9,14 +9,15 @@ from utk_loader import UTKFaceMultiTask
 from models import MultiTaskModel
 
 
-# ---------------- CONFIGURATION ----------------
+# ----------- CONFIGURATION -----------
+
 DATA_PATH = r"C:\Users\meist\Downloads\UTKFace"
 
 CHECKPOINT_DIR = "checkpoints"
 CHECKPOINT_NAME = "ethnicity_model.pt"
 
 BATCH_SIZE = 64
-EPOCHS = 5
+EPOCHS = 12
 LEARNING_RATE = 1e-4
 
 # Device configuration
@@ -28,7 +29,8 @@ else:
 print(f"Using device: {DEVICE}")
 
 
-# ---------------- DATA PREPARATION ----------------
+# ---------- DATA PREPARATION ----------
+
 # Standard ImageNet normalization
 transform = transforms.Compose([
     transforms.Resize((224, 224)),
@@ -40,11 +42,12 @@ transform = transforms.Compose([
     )
 ])
 
+
 # Initialize Dataset
 if not os.path.exists(DATA_PATH):
     raise FileNotFoundError(f"Directory not found: {DATA_PATH}")
 
-# Load dataset using your modified loader
+# Load dataset
 dataset = UTKFaceMultiTask(root=DATA_PATH, transform=transform)
 
 # Split Train/Val (90% / 10%)
@@ -56,7 +59,7 @@ train_ds, val_ds = random_split(dataset, [train_size, val_size])
 train_loader = DataLoader(train_ds, batch_size=BATCH_SIZE, shuffle=True, num_workers=0)
 val_loader = DataLoader(val_ds, batch_size=BATCH_SIZE, shuffle=False, num_workers=0)
 
-# ---------------- MODEL SETUP ----------------
+# ----------- MODEL SETUP -----------
 # Initialize model with 5 ethnicity classes (White, Black, Asian, Indian, Other)
 model = MultiTaskModel(backbone_name="resnet18", n_ethnicity=5)
 model.to(DEVICE)
@@ -64,7 +67,8 @@ model.to(DEVICE)
 optimizer = torch.optim.Adam(model.parameters(), lr=LEARNING_RATE)
 criterion = nn.CrossEntropyLoss()
 
-# ---------------- TRAINING LOOP ----------------
+
+# ----------- TRAINING LOOP -----------
 def train():
     os.makedirs(CHECKPOINT_DIR, exist_ok=True)
     best_val_acc = 0.0
@@ -72,7 +76,7 @@ def train():
     print(f"Starting training on {len(train_ds)} images...")
 
     for epoch in range(1, EPOCHS + 1):
-        # --- TRAIN STEP ---
+        # ----- TRAIN STEP -----
         model.train()
         running_loss = 0.0
         
@@ -100,7 +104,7 @@ def train():
 
         avg_train_loss = running_loss / len(train_loader)
 
-        # --- VALIDATION STEP ---
+        # ----- VALIDATION STEP -----
         model.eval()
         correct = 0
         total = 0
