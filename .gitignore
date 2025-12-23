@@ -1,5 +1,12 @@
-*.pt
-/weights/
+# Python
 __pycache__/
 *.pyc
-.DS_Store
+
+# Virtual Environments
+venv/
+.venv/
+env/
+facenet-env/
+
+# Checkpoints (optional – sag mir wenn ihr sie braucht)
+checkpoints/*.pt
