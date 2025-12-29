@@ -12,9 +12,15 @@ ROOT = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
 sys.path.append(ROOT)
 
 from src.gender_model import GenderInference
+from src.age_model import AgeInference
 
 gender_model = GenderInference(
     checkpoint_path="checkpoints/utk_gender_mobilenet.pt",
+    device="cpu"
+)
+
+age_model = AgeInference(
+    checkpoint_path="checkpoints/utk_age_mobilenet.pt",
     device="cpu"
 )
 
@@ -39,6 +45,27 @@ def gender_worker():
 
         gender_queue.task_done()
 
+def age_worker():
+    while not stop_event.is_set():
+        try:
+            pil_img, face_id = age_queue.get(timeout=0.2)
+        except:
+            continue
+
+        try:
+            # --- PIL → Tensor ---
+            img = pil_img.resize((128, 128))
+            img = np.array(img).astype("float32") / 255.0
+            img = torch.from_numpy(img).permute(2, 0, 1).unsqueeze(0)
+
+            result = age_model.predict(img)
+            age_results[face_id] = result
+
+        except Exception as e:
+            print("Age worker error:", e)
+
+        age_queue.task_done()
+
 import streamlit as st
 import cv2
 import threading
@@ -55,6 +82,10 @@ from src.infer import get_best_inference
 # ---------------- CONFIG (defaults) ----------------
 gender_queue = Queue(maxsize=16)
 gender_results = {}
+
+
+age_queue = Queue(maxsize=16)
+age_results = {}
 
 CAP_WIDTH = 1280
 CAP_HEIGHT = 720
@@ -398,6 +429,7 @@ def stop_all():
 if start_button:
     start_all()
     threading.Thread(target=gender_worker, daemon=True).start()
+    threading.Thread(target=age_worker, daemon=True).start()
     status_bar.markdown("**Status:** Running (capture+detector started)")
 
 if stop_button:
@@ -427,39 +459,65 @@ try:
         if current_boxes:
             for i, b in enumerate(current_boxes):
                 try:
-                    x1,y1,x2,y2,score = b
-                    cv2.rectangle(annotated, (x1,y1), (x2,y2), (0,255,0), 3)
-                    # ----------- GENDER PREDICTION (async) -----------
-                    if gender_model is not None:
-                        try:
-                            crop = annotated[y1:y2, x1:x2]
-                            crop_rgb = cv2.cvtColor(crop, cv2.COLOR_BGR2RGB)
-                            pil_img = Image.fromarray(crop_rgb)
-                            gender_queue.put_nowait((pil_img, i))
-                        except:
-                            pass
+                    x1, y1, x2, y2, score = b
+                    cv2.rectangle(annotated, (x1, y1), (x2, y2), (0, 255, 0), 3)
+
+                    # PIL crop once
+                    crop = annotated[y1:y2, x1:x2]
+                    crop_rgb = cv2.cvtColor(crop, cv2.COLOR_BGR2RGB)
+                    pil_img = Image.fromarray(crop_rgb).copy()
+
+                    # Gender async
+                    try:
+                        gender_queue.put_nowait((pil_img, i))
+                    except:
+                        pass
 
                     if i in gender_results:
                         g_label = gender_results[i]["gender"]
-                        g_conf = gender_results[i]["confidence"]
-                        txt = f"{g_label} ({g_conf:.2f})"
-                        cv2.putText(annotated, txt, (x1, y1 - 10),
-                                    cv2.FONT_HERSHEY_SIMPLEX, 0.7, (0, 255, 255), 2)
+                        g_conf  = gender_results[i]["confidence"]
+                        cv2.putText(
+                            annotated,
+                            f"{g_label} ({g_conf:.2f})",
+                            (x1, y1 - 10),
+                            cv2.FONT_HERSHEY_SIMPLEX,
+                            0.7,
+                            (0, 255, 255),
+                            2
+                        )
+
+                    # Age async
+                    try:
+                        age_queue.put_nowait((pil_img, i))
+                    except:
+                        pass
+
+                    if i in age_results:
+                        age_value = age_results[i]["age"]
+                        cv2.putText(
+                            annotated,
+                            f"Age: {int(age_value)}",
+                            (x1, y1 - 30),
+                            cv2.FONT_HERSHEY_SIMPLEX,
+                            0.7,
+                            (0, 200, 255),
+                            2
+                        )
+
 
                 except Exception as e:
-                    print("Gender prediction error:", e)
-
-                    if applied_run_estimation and i < len(current_labels) and current_labels[i] is not None:
-                        r = current_labels[i]
-                        age = r.get("age", "?")
-                        gender = r.get("gender", {}).get("label") if isinstance(r.get("gender"), dict) else r.get("gender")
-                        eth = r.get("ethnicity", {}).get("label") if isinstance(r.get("ethnicity"), dict) else r.get("ethnicity")
-                        txt = f"{age}, {gender}, {eth}"
-                        cv2.putText(annotated, txt, (x1, max(y1-8,0)), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (255,255,255), 1, cv2.LINE_AA)
-                except Exception:
+                    print("Main loop error:", e)
                     continue
         else:
-            cv2.putText(annotated, "No faces detected", (20,40), cv2.FONT_HERSHEY_SIMPLEX, 1.0, (0,0,255), 2, cv2.LINE_AA)
+            cv2.putText(
+                annotated,
+                "No faces detected",
+                (20, 40),
+                cv2.FONT_HERSHEY_SIMPLEX,
+                1.0,
+                (0, 0, 255),
+                2
+            )
 
         with annotated_lock:
             annotated_frame = annotated
@@ -484,19 +542,18 @@ try:
                 bx = list(boxes)
             for i, lab in enumerate(lb):
                 if lab is None:
-                    out_lines.append(f"Face {i}: detecting..." if applied_run_estimation else f"Face {i}: no attributes")
+                    out_lines.append(f"Face {i}: detecting...")
                     continue
                 try:
-                    age = lab.get("age", "?")
-                    gender = lab.get("gender", {}).get("label") if isinstance(lab.get("gender"), dict) else lab.get("gender")
-                    eth = lab.get("ethnicity", {}).get("label") if isinstance(lab.get("ethnicity"), dict) else lab.get("ethnicity")
-                    x1,y1,x2,y2,_ = bx[i]
-                    out_lines.append(f"Face {i} @({x1},{y1}) → Age: {age}, Gender: {gender}, Eth: {eth}")
-                except Exception:
-                    continue
+                    age = age_results.get(i, {}).get("age", "?")
+                    gender = gender_results.get(i, {}).get("gender", "?")
+                    x1, y1, _, _ , _ = bx[i]
+                    out_lines.append(f"Face {i} @({x1},{y1}) → Age: {age}, Gender: {gender}")
+                except:
+                    pass
 
             if out_lines:
-                results_box.text("\n".join(out_lines) + f"\n\nFPS: {fps:.1f} | Faces: {len(bx)}")
+                results_box.text("\n".join(out_lines) + f"\n\nFPS: {fps:.1f}")
             else:
                 results_box.text(f"FPS: {fps:.1f} | Faces: {len(bx)}")
 
