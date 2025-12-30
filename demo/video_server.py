@@ -13,6 +13,7 @@ sys.path.append(ROOT)
 
 from src.gender_model import GenderInference
 from src.age_model import AgeInference
+from src.ethnicity_model import EthnicityInference
 
 gender_model = GenderInference(
     checkpoint_path="checkpoints/utk_gender_mobilenet.pt",
@@ -21,6 +22,11 @@ gender_model = GenderInference(
 
 age_model = AgeInference(
     checkpoint_path="checkpoints/utk_age_mobilenet.pt",
+    device="cpu"
+)
+
+ethnicity_model = EthnicityInference(
+    checkpoint_path="checkpoints/ethnicity_model.pt",
     device="cpu"
 )
 
@@ -66,6 +72,27 @@ def age_worker():
 
         age_queue.task_done()
 
+def ethnicity_worker():
+    while not stop_event.is_set():
+        try:
+            pil_img, face_id = ethnicity_queue.get(timeout=0.2)
+        except:
+            continue
+
+        try:
+            # --- PIL → Tensor ---
+            img = pil_img.resize((128, 128))
+            img = np.array(img).astype("float32") / 255.0
+            img = torch.from_numpy(img).permute(2, 0, 1).unsqueeze(0)
+
+            result = ethnicity_model.predict(img)
+            ethnicity_results[face_id] = result
+
+        except Exception as e:
+            print("Ethnicity worker error:", e)
+
+        ethnicity_queue.task_done()
+
 import streamlit as st
 import cv2
 import threading
@@ -86,6 +113,9 @@ gender_results = {}
 
 age_queue = Queue(maxsize=16)
 age_results = {}
+
+ethnicity_queue = Queue(maxsize=16)
+ethnicity_results = {}
 
 CAP_WIDTH = 1280
 CAP_HEIGHT = 720
@@ -430,6 +460,7 @@ if start_button:
     start_all()
     threading.Thread(target=gender_worker, daemon=True).start()
     threading.Thread(target=age_worker, daemon=True).start()
+    threading.Thread(target=ethnicity_worker, daemon=True).start()
     status_bar.markdown("**Status:** Running (capture+detector started)")
 
 if stop_button:
@@ -504,6 +535,24 @@ try:
                             2
                         )
 
+                    # Ethnicity async
+                    try:
+                        ethnicity_queue.put_nowait((pil_img, i))
+                    except:
+                        pass
+
+                    if i in ethnicity_results:
+                        eth_label = ethnicity_results[i]["ethnicity"]
+                        eth_conf  = ethnicity_results[i]["confidence"]
+                        cv2.putText(
+                            annotated,
+                            f"{eth_label} ({eth_conf:.2f})",
+                            (x1, y1 - 50),
+                            cv2.FONT_HERSHEY_SIMPLEX,
+                            0.7,
+                            (255, 150, 0),
+                            2
+                        )
 
                 except Exception as e:
                     print("Main loop error:", e)
@@ -547,8 +596,9 @@ try:
                 try:
                     age = age_results.get(i, {}).get("age", "?")
                     gender = gender_results.get(i, {}).get("gender", "?")
+                    ethnicity = ethnicity_results.get(i, {}).get("ethnicity", "?")
                     x1, y1, _, _ , _ = bx[i]
-                    out_lines.append(f"Face {i} @({x1},{y1}) → Age: {age}, Gender: {gender}")
+                    out_lines.append(f"Face {i} @({x1},{y1}) → Age: {age}, Gender: {gender}, Ethnicity: {ethnicity}")
                 except:
                     pass
 
