@@ -8,11 +8,8 @@ import seaborn as sns
 import pandas as pd
 import os
 
-
 from utk_loader import UTKFaceMultiTask
 from models import MultiTaskModel
-
-# ------------- CONFIGURATION -------------
 
 DATA_PATH = r"C:\Users\meist\Downloads\UTKFace"
 CHECKPOINT_PATH = "checkpoints/ethnicity_model.pt"
@@ -21,6 +18,14 @@ BATCH_SIZE = 64
 
 ETHNICITY_LABELS = ["White", "Black", "Asian", "Indian", "Other"]
 
+# Schriftgröße
+plt.rcParams['font.size'] = 16           # Standard Schriftgröße
+plt.rcParams['axes.titlesize'] = 20      # Titelgröße
+plt.rcParams['axes.labelsize'] = 16      # Achsenbeschriftung (x, y Label)
+plt.rcParams['xtick.labelsize'] = 16     # x-Achse Werte
+plt.rcParams['ytick.labelsize'] = 16     # y-Achse Werte
+plt.rcParams['legend.fontsize'] = 16     # Legende
+
 def evaluate_with_visuals():
     os.makedirs(OUTPUT_DIR, exist_ok=True)
     
@@ -28,7 +33,7 @@ def evaluate_with_visuals():
     device = "cuda" if torch.cuda.is_available() else "cpu"
     print(f"Running evaluation on: {device}")
 
-    # 1. Load Data
+    # Load Data
     transform = transforms.Compose([
         transforms.Resize((224, 224)),
         transforms.ToTensor(),
@@ -45,7 +50,7 @@ def evaluate_with_visuals():
     
     val_loader = DataLoader(val_ds, batch_size=BATCH_SIZE, shuffle=False)
 
-    # 2. Load Model
+    # Load Model
     print("Loading model...")
     model = MultiTaskModel(backbone_name="resnet18", n_ethnicity=5)
     
@@ -57,7 +62,7 @@ def evaluate_with_visuals():
     model.to(device)
     model.eval()
 
-    # 3. Run Inference and Collect Confidence
+    # Run Inference and Collect Confidence
     all_preds = []
     all_labels = []
     all_confs = [] # Confidence scores
@@ -81,14 +86,15 @@ def evaluate_with_visuals():
             all_labels.extend(labels.cpu().numpy())
             all_confs.extend(confs.cpu().numpy())
 
-    # ---VISUAL 1: CONFUSION MATRIX HEATMAP ---
+    # --- CONFUSION MATRIX HEATMAP
     print("Generating Confusion Matrix...")
     cm = confusion_matrix(all_labels, all_preds)
     
     plt.figure(figsize=(10, 8))
     sns.heatmap(cm, annot=True, fmt='d', cmap='Blues', 
                 xticklabels=ETHNICITY_LABELS, 
-                yticklabels=ETHNICITY_LABELS)
+                yticklabels=ETHNICITY_LABELS,
+                annot_kws={"size": 16})
     plt.xlabel('Predicted')
     plt.ylabel('Actual')
     plt.title('Ethnicity Confusion Matrix (Raw Counts)')
@@ -98,7 +104,7 @@ def evaluate_with_visuals():
     print(f"-> Saved: {save_path}")
     plt.close()
 
-    # --- VISUAL 2: PERFORMANCE BAR CHART ---
+    # --- PERFORMANCE BAR CHART
     print("Generating Metrics Chart...")
     report = classification_report(all_labels, all_preds, target_names=ETHNICITY_LABELS, output_dict=True)
     df = pd.DataFrame(report).transpose()
@@ -106,7 +112,8 @@ def evaluate_with_visuals():
     # Filter only the classes (remove accuracy/macro avg rows)
     class_metrics = df.iloc[:5] 
     
-    class_metrics[['precision', 'recall', 'f1-score']].plot(kind='bar', figsize=(10, 6))
+    # Plotting
+    ax = class_metrics[['precision', 'recall', 'f1-score']].plot(kind='bar', figsize=(10, 6), fontsize=16)
     plt.title('Performance Metrics by Ethnicity')
     plt.xlabel('Ethnicity')
     plt.ylabel('Score (0-1)')
@@ -120,7 +127,7 @@ def evaluate_with_visuals():
     print(f"-> Saved: {save_path}")
     plt.close()
 
-    # --- VISUAL 3: CONFIDENCE DISTRIBUTION (REPLACEMENT) ---
+    # --- CONFIDENCE DISTRIBUTION
     print("Generating Confidence Boxplot...")
     
     # Prepare data for plotting
@@ -139,7 +146,7 @@ def evaluate_with_visuals():
     plt.ylim(0, 1.05)
     plt.grid(axis='y', linestyle='--', alpha=0.5)
     
-    # Add a red line at 0.5 (random guess threshold for binary, but useful visual anchor)
+    # Add a red line at 0.5
     plt.axhline(y=0.5, color='r', linestyle='--', alpha=0.5, label='Low Confidence Threshold')
     plt.legend(loc='lower right')
     
@@ -149,8 +156,6 @@ def evaluate_with_visuals():
     plt.close()
     
     print(f"\nDone! Visualizations saved to: {os.path.abspath(OUTPUT_DIR)}")
-
-
 
 if __name__ == "__main__":
     evaluate_with_visuals()

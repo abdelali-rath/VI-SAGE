@@ -1,69 +1,63 @@
 import os
 from PIL import Image
-from torch.utils.data import Dataset
 import torch
+from torch.utils.data import Dataset
 
 class UTKFaceMultiTask(Dataset):
     def __init__(self, root, transform=None):
         self.root = root
         self.transform = transform
+        self.images = []
 
-        self.img_paths = []
-        self.gender_labels = []
-        self.ethnicity_labels = []
+        # check if directory exists
+        if not os.path.exists(root):
+            raise RuntimeError(f"Dataset path {root} does not exist!")
 
-        # UTKFace filename format: [age]_[gender]_[race]_[date].jpg
-        for f in os.listdir(root):
-            if not f.endswith(".jpg"):
-                continue
+        # Read filenames
+        for filename in os.listdir(root):
+            if filename.lower().endswith(('.jpg', '.png', '.jpeg')):
+                # filename parsen ?
+                parts = filename.split('_')
+                if len(parts) >= 4:
+                    self.images.append(filename)
 
-            parts = f.split("_")
-
-            # Ensure filename has enough parts to extract age, gender, and race
-            if len(parts) < 4:
-                continue
-
-            try:
-                # Index 1 is Gender (0=Male, 1=Female)
-                gender = int(parts[1])
-                
-                # Index 2 is Ethnicity (0=White, 1=Black, 2=Asian, 3=Indian, 4=Other)
-                race = int(parts[2])
-                
-                # Filter invalid ranges if necessary (e.g. race should be 0-4)
-                if race < 0 or race > 4:
-                    continue
-                    
-            except ValueError:
-                continue
-
-            self.img_paths.append(os.path.join(root, f))
-            self.gender_labels.append(gender)
-            self.ethnicity_labels.append(race)
-
-        print(f"Loaded {len(self.img_paths)} images from {root}")
-        assert len(self.img_paths) == len(self.gender_labels) == len(self.ethnicity_labels), \
-            "Mismatch in data lists length!"
+        print(f"-> Loaded {len(self.images)} images from {root}")
 
     def __len__(self):
-        return len(self.img_paths)
+        return len(self.images)
 
     def __getitem__(self, idx):
-        img_path = self.img_paths[idx]
-        
-        # Load and convert image
-        img = Image.open(img_path).convert("RGB")
+        filename = self.images[idx]
+        img_path = os.path.join(self.root, filename)
+
+        # Load images
+        try:
+            image = Image.open(img_path).convert('RGB')
+        except Exception as e:
+            print(f"Error loading image {filename}: {e}")
+            # Fallback
+            return self.__getitem__((idx + 1) % len(self.images))
+
         if self.transform:
-            img = self.transform(img)
+            image = self.transform(image)
 
-        # Get labels
-        gender_label = self.gender_labels[idx]
-        ethnicity_label = self.ethnicity_labels[idx]
+        # Labels parsen
+        # Format: [age]_[gender]_[race]_[date].jpg
+        parts = filename.split('_')
+        
+        try:
+            age = float(parts[0])       # float for regression
+            gender = int(parts[1])      # 0=Male, 1=Female
+            ethnicity = int(parts[2])   # 0..4
+        except ValueError:
+            # skip wrong filenames
+            return self.__getitem__((idx + 1) % len(self.images))
 
-        # Return image and a dictionary of targets
+        # Give dictionary back
         targets = {
-            "gender": torch.tensor(gender_label, dtype=torch.long),
-            "ethnicity": torch.tensor(ethnicity_label, dtype=torch.long)
+            'age': torch.tensor(age, dtype=torch.float32),
+            'gender': torch.tensor(gender, dtype=torch.long),
+            'ethnicity': torch.tensor(ethnicity, dtype=torch.long)
         }
 
-        return img, targets
+        return image, targets
