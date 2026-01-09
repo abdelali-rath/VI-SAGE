@@ -14,6 +14,26 @@ sys.path.append(ROOT)
 from src.gender_model import GenderInference
 from src.age_model import AgeInference
 from src.ethnicity_model import EthnicityInference
+from torchvision import transforms
+
+# Preprocessing transforms for each model
+gender_transform = transforms.Compose([
+    transforms.Resize((224, 224)),
+    transforms.ToTensor(),
+    transforms.Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225])
+])
+
+age_transform = transforms.Compose([
+    transforms.Resize((224, 224)),
+    transforms.ToTensor(),
+    transforms.Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225])
+])
+
+ethnicity_transform = transforms.Compose([
+    transforms.Resize((128, 128)),
+    transforms.ToTensor(),
+    transforms.Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225])
+])
 
 gender_model = GenderInference(
     checkpoint_path="checkpoints/utk_gender_mobilenet.pt",
@@ -38,10 +58,8 @@ def gender_worker():
             continue
 
         try:
-            # --- Convert PIL → Tensor (fix) ---
-            img = pil_img.resize((128, 128))
-            img = np.array(img).astype("float32") / 255.0
-            img = torch.from_numpy(img).permute(2, 0, 1).unsqueeze(0)  # (1,3,128,128)
+            # --- Convert PIL → Tensor (FIXED: use 224x224 and proper normalization) ---
+            img = gender_transform(pil_img).unsqueeze(0)  # (1,3,224,224)
 
             result = gender_model.predict(img)
             gender_results[face_id] = result
@@ -59,10 +77,8 @@ def age_worker():
             continue
 
         try:
-            # --- PIL → Tensor ---
-            img = pil_img.resize((128, 128))
-            img = np.array(img).astype("float32") / 255.0
-            img = torch.from_numpy(img).permute(2, 0, 1).unsqueeze(0)
+            # --- PIL → Tensor (FIXED: use proper size and normalization) ---
+            img = age_transform(pil_img).unsqueeze(0)
 
             result = age_model.predict(img)
             age_results[face_id] = result
@@ -80,10 +96,8 @@ def ethnicity_worker():
             continue
 
         try:
-            # --- PIL → Tensor ---
-            img = pil_img.resize((128, 128))
-            img = np.array(img).astype("float32") / 255.0
-            img = torch.from_numpy(img).permute(2, 0, 1).unsqueeze(0)
+            # --- PIL → Tensor (FIXED: use proper size and normalization) ---
+            img = ethnicity_transform(pil_img).unsqueeze(0)
 
             result = ethnicity_model.predict(img)
             ethnicity_results[face_id] = result
@@ -491,8 +505,10 @@ try:
             for i, b in enumerate(current_boxes):
                 try:
                     x1, y1, x2, y2, score = b
-                    cv2.rectangle(annotated, (x1, y1), (x2, y2), (0, 255, 0), 3)
-
+                    # Draw rectangle with different colors for each face
+                    color = (0, 255, 0) if i % 2 == 0 else (255, 0, 255)  # Green or Magenta
+                    cv2.rectangle(annotated, (x1, y1), (x2, y2), color, 3)
+                    
                     # PIL crop once
                     crop = annotated[y1:y2, x1:x2]
                     crop_rgb = cv2.cvtColor(crop, cv2.COLOR_BGR2RGB)
@@ -504,18 +520,19 @@ try:
                     except:
                         pass
 
+                    # Prepare text to display
+                    text_lines = []
+                    y_offset = y1 - 5
+                    
+                    # Face ID (always show)
+                    text_lines.append((f"Face {i+1}", color, y_offset))
+                    y_offset -= 25
+
                     if i in gender_results:
                         g_label = gender_results[i]["gender"]
                         g_conf  = gender_results[i]["confidence"]
-                        cv2.putText(
-                            annotated,
-                            f"{g_label} ({g_conf:.2f})",
-                            (x1, y1 - 10),
-                            cv2.FONT_HERSHEY_SIMPLEX,
-                            0.7,
-                            (0, 255, 255),
-                            2
-                        )
+                        text_lines.append((f"{g_label} ({g_conf:.2f})", (0, 255, 255), y_offset))
+                        y_offset -= 20
 
                     # Age async
                     try:
@@ -525,15 +542,8 @@ try:
 
                     if i in age_results:
                         age_value = age_results[i]["age"]
-                        cv2.putText(
-                            annotated,
-                            f"Age: {int(age_value)}",
-                            (x1, y1 - 30),
-                            cv2.FONT_HERSHEY_SIMPLEX,
-                            0.7,
-                            (0, 200, 255),
-                            2
-                        )
+                        text_lines.append((f"Age: {int(age_value)}", (0, 200, 255), y_offset))
+                        y_offset -= 20
 
                     # Ethnicity async
                     try:
@@ -544,13 +554,24 @@ try:
                     if i in ethnicity_results:
                         eth_label = ethnicity_results[i]["ethnicity"]
                         eth_conf  = ethnicity_results[i]["confidence"]
+                        text_lines.append((f"{eth_label} ({eth_conf:.2f})", (255, 150, 0), y_offset))
+                    
+                    # Draw all text lines (in reverse to show from top to bottom)
+                    # Adjust if text would go outside image bounds
+                    min_y = 15
+                    first_text_y = text_lines[0][2] if text_lines else y1
+                    if first_text_y < min_y:
+                        offset = min_y - first_text_y
+                        text_lines = [(text, color, y + offset) for text, color, y in text_lines]
+                    
+                    for text, txt_color, txt_y in reversed(text_lines):
                         cv2.putText(
                             annotated,
-                            f"{eth_label} ({eth_conf:.2f})",
-                            (x1, y1 - 50),
+                            text,
+                            (x1, txt_y),
                             cv2.FONT_HERSHEY_SIMPLEX,
-                            0.7,
-                            (255, 150, 0),
+                            0.6,
+                            txt_color,
                             2
                         )
 
