@@ -66,7 +66,12 @@ class AgeInference:
         arr = (arr - mean) / std
 
         tensor = torch.from_numpy(arr).permute(2, 0, 1).unsqueeze(0)
-        return tensor.to(self.device)
+        # Ensure tensor dtype matches model parameters to avoid Double/Float mismatch
+        try:
+            param_dtype = next(self.model.parameters()).dtype
+        except StopIteration:
+            param_dtype = torch.float32
+        return tensor.to(self.device, dtype=param_dtype)
 
 
     # -----------------------------------------------------
@@ -169,7 +174,11 @@ class AgeInference:
         arr = (arr - mean) / std
 
         tensor = torch.from_numpy(arr).permute(2, 0, 1).unsqueeze(0)
-        return tensor.to(self.device)
+        try:
+            param_dtype = next(self.model.parameters()).dtype
+        except StopIteration:
+            param_dtype = torch.float32
+        return tensor.to(self.device, dtype=param_dtype)
 
 
     # -----------------------------------------------------

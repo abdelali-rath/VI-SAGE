@@ -1,6 +1,7 @@
 import torch
 import torch.nn as nn
 from torchvision.models import mobilenet_v3_large, MobileNet_V3_Large_Weights
+from torchvision import transforms
 
 
 class GenderNet(nn.Module):
@@ -46,7 +47,20 @@ class GenderInference:
         self.model.eval()
 
         self.softmax = nn.Softmax(dim=1)
+        # Checkpoint mapping: index 0 -> male, 1 -> female
         self.classes = ["male", "female"]
+
+        # Preprocessing (convenience)
+        self._pil_transform = transforms.Compose([
+            transforms.Resize((224, 224)),
+            transforms.ToTensor(),
+            transforms.Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225])
+        ])
+
+    def predict_from_pil(self, pil_img):
+        """Convenience helper: accept PIL Image and return same dict as `predict`."""
+        x = self._pil_transform(pil_img).unsqueeze(0).to(self.device)
+        return self.predict(x)
 
         print("Gender checkpoint loaded successfully.")
 

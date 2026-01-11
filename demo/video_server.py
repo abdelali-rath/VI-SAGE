@@ -45,6 +45,7 @@ DNN_PROTO = "models/dnn/deploy.prototxt"
 DNN_MODEL = "models/dnn/res10_300x300_ssd_iter_140000_fp16.caffemodel"
 
 STATUS_UPDATE_INTERVAL = 0.8    # seconds - UI update cadence for FPS/results
+GENDER_DEBUG = True
 
 # ---------------- GLOBAL QUEUES AND STATE (initialized early) ----------------
 gender_queue = Queue(maxsize=16)
@@ -204,8 +205,22 @@ def gender_worker():
             continue
 
         try:
-            img = gender_transform(pil_img).unsqueeze(0)
-            result = gender_model.predict(img)
+            # Prefer model's built-in PIL helper if available to avoid transform mismatches
+            if hasattr(gender_model, 'predict_from_pil'):
+                result = gender_model.predict_from_pil(pil_img)
+            else:
+                img = gender_transform(pil_img).unsqueeze(0)
+                result = gender_model.predict(img)
+            # Optional debug: print raw logits/probs
+            if GENDER_DEBUG and hasattr(gender_model, 'model') and hasattr(gender_model, 'softmax'):
+                try:
+                    t = gender_model._pil_transform(pil_img).unsqueeze(0).to(gender_model.device)
+                    with torch.no_grad():
+                        logits = gender_model.model(t)
+                        probs = torch.softmax(logits, dim=1)[0].cpu().numpy()
+                    print(f"[GENDER DEBUG] probs={probs}, predicted={result['gender']}, conf={result['confidence']}")
+                except Exception as e:
+                    print(f"[GENDER DEBUG] failed to compute raw logits: {e}")
             
             # Smooth the prediction
             smoothed_label, smoothed_conf = smooth_prediction(
@@ -236,8 +251,12 @@ def age_worker():
             continue
 
         try:
-            img = age_transform(pil_img).unsqueeze(0)
-            result = age_model.predict(img)
+            # Use model's PIL helper to ensure preprocessing matches training
+            if hasattr(age_model, 'predict_from_pil'):
+                result = age_model.predict_from_pil(pil_img)
+            else:
+                img = age_transform(pil_img).unsqueeze(0)
+                result = age_model.predict(img)
             
             # Smooth the age prediction
             smoothed_age = smooth_prediction(face_id, 'age', result["age"])
