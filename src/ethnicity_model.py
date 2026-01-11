@@ -113,13 +113,13 @@ class MultiTaskModel(nn.Module):
 
 class EthnicityInference:
     
-    # Ethnicity class labels (UTK Face dataset standard)
+    # Ethnicity class labels (kurz, DE)
     ETHNICITY_LABELS = {
-        0: "White",
-        1: "Black",
+        0: "White / Caucasian",
+        1: "Black / African",
         2: "Asian",
-        3: "Indian",
-        4: "Others"
+        3: "South Asian",
+        4: "Other"
     }
     
     def __init__(self, checkpoint_path, device="cpu", num_classes=5):

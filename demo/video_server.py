@@ -46,6 +46,8 @@ DNN_MODEL = "models/dnn/res10_300x300_ssd_iter_140000_fp16.caffemodel"
 
 STATUS_UPDATE_INTERVAL = 0.8    # seconds - UI update cadence for FPS/results
 GENDER_DEBUG = True
+AGE_DEBUG = True
+AGE_SUDDEN_CHANGE_THRESHOLD = 6  # years: ignore jumps larger than this
 
 # ---------------- GLOBAL QUEUES AND STATE (initialized early) ----------------
 gender_queue = Queue(maxsize=16)
@@ -61,6 +63,10 @@ ethnicity_results = {}
 prediction_history = {}  # {track_id: {'gender': [], 'age': [], 'ethnicity': []}}
 HISTORY_SIZE = 8  # Increased for more stable predictions
 MIN_CONFIDENCE_THRESHOLD = 0.4  # Ignore low confidence predictions
+# Age stability helpers
+last_age_display = {}  # {track_id: last_shown_age}
+age_change_count = {}  # {track_id: consecutive_different_count}
+AGE_REQUIRED_CONSISTENT_FRAMES = 3
 
 latest_frame = None
 latest_frame_lock = threading.Lock()
@@ -153,8 +159,42 @@ def smooth_prediction(track_id, pred_type, new_value, new_confidence=None):
             # Weighted average: newer predictions have more weight
             weights = np.linspace(0.5, 1.0, len(filtered))
             weighted_age = np.average(filtered, weights=weights)
+
+            # Prevent sudden unrealistic jumps: compare to previous filtered history
+            if len(history) > 1:
+                prev_vals = history[:-1]
+                prev_ages = np.array(prev_vals)
+                prev_filtered = prev_ages[np.abs(prev_ages - np.median(prev_ages)) <= 1.5 * (np.std(prev_ages) if np.std(prev_ages)>0 else 1.0)]
+                if len(prev_filtered) > 0:
+                    prev_weighted = np.average(prev_filtered, weights=np.linspace(0.5, 1.0, len(prev_filtered)))
+                    if abs(weighted_age - prev_weighted) > AGE_SUDDEN_CHANGE_THRESHOLD:
+                        if AGE_DEBUG:
+                            print(f"[AGE DEBUG] Detected sudden jump: new={weighted_age:.1f}, prev={prev_weighted:.1f}")
+                        # Require the jump to be consistent over several frames before accepting
+                        prev_display = last_age_display.get(track_id)
+                        if prev_display is None:
+                            # no previous display - be conservative and keep prev_weighted
+                            age_change_count[track_id] = 0
+                            return int(prev_weighted)
+                        cnt = age_change_count.get(track_id, 0) + 1
+                        age_change_count[track_id] = cnt
+                        if cnt >= AGE_REQUIRED_CONSISTENT_FRAMES:
+                            # accept new value after consecutive confirmations
+                            age_change_count[track_id] = 0
+                            last_age_display[track_id] = weighted_age
+                            return int(weighted_age)
+                        else:
+                            if AGE_DEBUG:
+                                print(f"[AGE DEBUG] Waiting for {AGE_REQUIRED_CONSISTENT_FRAMES - cnt} more frames to accept change")
+                            return int(prev_weighted)
+
+            # commit display
+            last_age_display[track_id] = weighted_age
+            age_change_count[track_id] = 0
             return int(weighted_age)
         else:
+            last_age_display[track_id] = int(median_age)
+            age_change_count[track_id] = 0
             return int(median_age)
     else:
         # For gender and ethnicity: confidence-weighted voting with threshold
@@ -257,11 +297,34 @@ def age_worker():
             else:
                 img = age_transform(pil_img).unsqueeze(0)
                 result = age_model.predict(img)
+
+            # Extra debug: print raw model output -> age (if possible)
+            if AGE_DEBUG and hasattr(age_model, 'preprocess') and hasattr(age_model, 'model'):
+                try:
+                    t = age_model.preprocess(pil_img)
+                    with torch.no_grad():
+                        raw = age_model.model(t).item()
+                    print(f"[AGE DEBUG] track={face_id} raw={raw:.3f} -> age={result['age']:.1f}")
+                except Exception as e:
+                    print(f"[AGE DEBUG] failed to get raw output: {e}")
             
-            # Smooth the age prediction
+            # Smooth the age prediction (keep numeric for smoothing, compute categorical label from smoothed value)
             smoothed_age = smooth_prediction(face_id, 'age', result["age"])
-            
-            age_results[face_id] = {"age": smoothed_age}
+            # Derive category from smoothed numeric age to avoid showing raw outliers
+            sa = float(smoothed_age)
+            if sa <= 12:
+                age_label = "Kind"
+            elif sa <= 19:
+                age_label = "Teen"
+            elif sa <= 29:
+                age_label = "Junger Erwachsener"
+            elif sa <= 44:
+                age_label = "Erwachsener"
+            elif sa <= 59:
+                age_label = "Mittleres Alter"
+            else:
+                age_label = "Senior"
+            age_results[face_id] = {"age": smoothed_age, "age_range": age_label}
         except Exception as e:
             print(f"Age worker error: {e}")
 
@@ -301,27 +364,59 @@ def ethnicity_worker():
 
 # ---------------- STREAMLIT UI ----------------
 st.set_page_config(page_title="∀I-SAGE — Fast Live Demo", layout="wide")
-st.title("∀I-SAGE — Fast Live Webcam Demo (720p)")
 
-col_video, col_right = st.columns([3,1])
+# Small visual tweaks
+st.markdown(
+    """
+    <style>
+    .stApp header {background: linear-gradient(90deg,#123456,#224466);}
+    .disclaimer {background:#fff3cd;padding:10px;border-radius:6px}
+    </style>
+    """,
+    unsafe_allow_html=True,
+)
+
+st.title("∀I-SAGE — Live Webcam Demo — Schnelle Schätzungen")
+
+# Disclaimer (sichtbar, collapsible)
+with st.expander("Wichtiger Hinweis: Zuverlässigkeit & Ethik", expanded=True):
+    st.markdown(
+        """
+        **Wichtig:** Die hier angezeigten Schätzungen zu Alter, Geschlecht und ethnischer Zugehörigkeit
+        sind automatisierte Vorhersagen eines Modells und können ungenau, voreingenommen oder fehlerhaft sein.
+        - Diese Ergebnisse dienen nur zu Demonstrationszwecken und sollten **nicht** für Entscheidungen verwendet werden.
+        - Modelle können systematische Vorurteile (Bias) haben und unterrepräsentierte Gruppen schlechter vorhersagen.
+        - Stellen Sie sicher, dass Sie Datenschutz- und Ethikrichtlinien einhalten, bevor Sie diese Technologie einsetzen.
+        """
+    )
+
+# Main layout: Video (groß) + rechte Spalte für Ergebnisse/Notizen
+col_video, col_right = st.columns([3, 1])
 video_placeholder = col_video.empty()
 
-col_right.subheader("Controls")
-start_button = col_right.button("▶ Start")
-stop_button  = col_right.button("⏹ Stop")
+# Controls in Sidebar
+st.sidebar.header("Steuerung")
+start_button = st.sidebar.button("▶ Start")
+stop_button  = st.sidebar.button("⏹ Stop")
 
-# toggles
-run_estimation = col_right.checkbox("Enable attribute estimation (age/gender/ethnicity)", value=False)
-maximize_fps = col_right.checkbox("Maximize FPS (aggressive)", value=False)
-
-col_right.markdown("### Results")
-results_box = col_right.empty()
-col_right.markdown("### Notes")
-col_right.markdown(
-    "- Resolution: 1280×720\n"
-    "- Detector: OpenCV DNN res10_300x300_ssd (fast) with Haar fallback.\n"
-    "- Inference: asynchronous on GPU if enabled."
+# toggles with short help
+run_estimation = st.sidebar.checkbox("Attribute schätzen (Alter/Geschlecht/Ethn.)", value=False)
+maximize_fps = st.sidebar.checkbox("Maximiere FPS (aggressiv)", value=False)
+st.sidebar.markdown("---")
+st.sidebar.markdown("**Hinweis:** Bei aktiviertem " + ("`Maximiere FPS`" if maximize_fps else "`Attribute schätzen`"))
+st.sidebar.markdown("---")
+st.sidebar.markdown(
+    "**Alterskategorien (Anzeige):**  \n"
+    "- Kind: 0–12  \n"
+    "- Teen: 13–19  \n"
+    "- Junger Erwachsener: 20–29  \n"
+    "- Erwachsener: 30–44  \n"
+    "- Mittleres Alter: 45–59  \n"
+    "- Senior: 60+"
 )
+
+col_right.subheader("Ergebnisse")
+results_box = col_right.empty()
 
 status_bar = st.empty()
 
@@ -792,8 +887,10 @@ try:
 
                     # Age
                     if track_id in age_results:
-                        age_value = age_results[track_id]["age"]
-                        text_lines.append((f"Age: {int(age_value)}", (0, 200, 255), y_offset))
+                        age_info = age_results[track_id]
+                        # Prefer categorical label if available
+                        age_label = age_info.get("age_range") or (str(int(age_info.get("age"))) if "age" in age_info else "...")
+                        text_lines.append((f"Age: {age_label}", (0, 200, 255), y_offset))
                         y_offset -= 22
 
                     # Ethnicity
@@ -880,25 +977,70 @@ try:
                     if track_id is None:
                         continue
                     
-                    age = age_results.get(track_id, {}).get("age", "...")
+                    age_entry = age_results.get(track_id, {})
                     gender = gender_results.get(track_id, {}).get("gender", "...")
                     ethnicity = ethnicity_results.get(track_id, {}).get("ethnicity", "...")
+                    # Prefer categorical age label for display
+                    if age_entry.get("age_range"):
+                        age_str = age_entry.get("age_range")
+                    else:
+                        a = age_entry.get("age", "...")
+                        age_str = str(int(a)) if isinstance(a, (int, float)) else a
                     x1, y1, _, _, _ = bx[i]
                     
-                    if age == "..." and gender == "..." and ethnicity == "...":
+                    if age_str == "..." and gender == "..." and ethnicity == "...":
                         out_lines.append(f"Face @({x1},{y1}) → Analyzing...")
                     else:
-                        age_str = str(int(age)) if isinstance(age, (int, float)) else age
                         gender_str = gender.capitalize() if isinstance(gender, str) else gender
-                        out_lines.append(f"Face @({x1},{y1}) → {gender_str}, {age_str} yrs, {ethnicity}")
+                        out_lines.append(f"Face @({x1},{y1}) → {gender_str}, {age_str}, {ethnicity}")
                 except Exception as e:
                     print(f"Results display error: {e}")
                     pass
 
             if out_lines:
-                results_box.text("\n".join(out_lines) + f"\n\nFPS: {fps:.1f}")
+                md_lines = []
+                md_lines.append(f"**FPS:** {fps:.1f}  |  **Gesichter:** {len(bx)}")
+                for i in range(len(bx)):
+                    try:
+                        track_id = track_id_mapping.get(i)
+                        if track_id is None:
+                            continue
+
+                        age_entry = age_results.get(track_id, {})
+                        gender = gender_results.get(track_id, {}).get("gender", "...")
+                        g_conf  = gender_results.get(track_id, {}).get("confidence", None)
+                        ethnicity = ethnicity_results.get(track_id, {}).get("ethnicity", "...")
+                        eth_conf = ethnicity_results.get(track_id, {}).get("confidence", None)
+
+                        # Prefer categorical age label
+                        if age_entry.get("age_range"):
+                            age_str = age_entry.get("age_range")
+                        else:
+                            a = age_entry.get("age", None)
+                            age_str = str(int(a)) if isinstance(a, (int, float)) else "..."
+
+                        status = "Analysiere…" if (gender == "..." and ethnicity == "..." and age_str == "...") else "Fertig"
+
+                        if isinstance(g_conf, (int, float)):
+                            g_disp = f"{str(gender).capitalize()} ({g_conf:.0%})"
+                        else:
+                            g_disp = str(gender).capitalize() if isinstance(gender, str) else "..."
+
+                        if isinstance(eth_conf, (int, float)):
+                            eth_disp = f"{ethnicity} ({eth_conf:.0%})"
+                        else:
+                            eth_disp = str(ethnicity)
+
+                        md_lines.append(
+                            f"**Face #{track_id}** — {status}  \n- **Geschlecht:** {g_disp}  \n- **Alter:** {age_str}  \n- **Ethnie:** {eth_disp}"
+                        )
+                    except Exception as e:
+                        print(f"Results formatting error: {e}")
+                        pass
+
+                results_box.markdown("\n\n".join(md_lines))
             else:
-                results_box.text(f"FPS: {fps:.1f} | Faces: {len(bx)}")
+                results_box.markdown(f"**FPS:** {fps:.1f} | **Gesichter:** {len(bx)}")
 
             status_bar.markdown(f"**Status:** Running | FPS: {fps:.1f} | Faces: {len(bx)} | Detector: {detector_type} | Est: {applied_run_estimation}")
 

@@ -90,15 +90,19 @@ class AgeInference:
         # Clamp to human range
         age = max(0.0, min(100.0, age))
 
-        # Age buckets (UI-friendly)
-        if age < 10:   age_range = "0–9"
-        elif age < 20: age_range = "10–19"
-        elif age < 30: age_range = "20–29"
-        elif age < 40: age_range = "30–39"
-        elif age < 50: age_range = "40–49"
-        elif age < 60: age_range = "50–59"
-        elif age < 70: age_range = "60–69"
-        else:          age_range = "70+"
+        # Age buckets (localized / UI-friendly)
+        if age <= 12:
+            age_range = "Kind"
+        elif age <= 19:
+            age_range = "Teen"
+        elif age <= 29:
+            age_range = "Junger Erwachsener"
+        elif age <= 44:
+            age_range = "Erwachsener"
+        elif age <= 59:
+            age_range = "Mittleres Alter"
+        else:
+            age_range = "Senior"
 
         return {
             "age": age,
@@ -196,15 +200,19 @@ class AgeInference:
 
         age = max(0.0, min(100.0, age))
 
-        # Age buckets (optional)
-        if age < 10:   age_range = "0–9"
-        elif age < 20: age_range = "10–19"
-        elif age < 30: age_range = "20–29"
-        elif age < 40: age_range = "30–39"
-        elif age < 50: age_range = "40–49"
-        elif age < 60: age_range = "50–59"
-        elif age < 70: age_range = "60–69"
-        else:          age_range = "70+"
+        # Age buckets (localized / UI-friendly)
+        if age <= 12:
+            age_range = "Kind"
+        elif age <= 19:
+            age_range = "Teen"
+        elif age <= 29:
+            age_range = "Junger Erwachsener"
+        elif age <= 44:
+            age_range = "Erwachsener"
+        elif age <= 59:
+            age_range = "Mittleres Alter"
+        else:
+            age_range = "Senior"
 
         return {
             "age": age,
