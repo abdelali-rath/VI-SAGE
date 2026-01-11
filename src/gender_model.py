@@ -38,17 +38,50 @@ class GenderInference:
         self.device = torch.device(device)
         self.model = GenderNet().to(self.device)
 
-        # Load checkpoint exactly
+        # Load checkpoint
         state = torch.load(checkpoint_path, map_location=self.device)
 
-        # rename nothing -> matches 100%
-        self.model.load_state_dict(state, strict=True)
+        # Unwrap common checkpoint containers
+        if isinstance(state, dict):
+            for k in ("model_state", "model_state_dict", "state_dict"):
+                if k in state:
+                    state = state[k]
+                    break
+
+        # Detect whether checkpoint keys belong to a bare MobileNet (e.g. 'features.*')
+        # or are already prefixed (e.g. 'backbone.features.*'). Remap as needed.
+        has_backbone_keys = any(k.startswith('backbone.') for k in state.keys()) if isinstance(state, dict) else False
+        has_features_keys = any(k.startswith('features.') for k in state.keys()) if isinstance(state, dict) else False
+
+        if has_features_keys and not has_backbone_keys:
+            print("⚠️ Remapping gender checkpoint keys (features.* -> backbone.features.*)")
+            new_state = {}
+            for k, v in state.items():
+                if k.startswith('features.') or k.startswith('classifier.'):
+                    new_state[f'backbone.{k}'] = v
+                else:
+                    new_state[k] = v
+            state = new_state
+
+        # Load weights with non-strict to allow minor head differences and report mismatches
+        try:
+            missing, unexpected = self.model.load_state_dict(state, strict=False)
+        except Exception as e:
+            # Fall back to strict load to surface errors
+            print(f"Warning: Gender model failed to load (strict): {e}")
+            self.model.load_state_dict(state, strict=True)
+            missing, unexpected = [], []
 
         self.model.eval()
-
         self.softmax = nn.Softmax(dim=1)
         # Checkpoint mapping: index 0 -> male, 1 -> female
         self.classes = ["male", "female"]
+
+        # Print concise status
+        if missing:
+            print(f"Warning: Gender checkpoint loaded with missing keys: {len(missing)} missing, {len(unexpected)} unexpected")
+        else:
+            print("✅ Gender checkpoint loaded successfully.")
 
         # Preprocessing (convenience)
         self._pil_transform = transforms.Compose([
@@ -62,7 +95,11 @@ class GenderInference:
         x = self._pil_transform(pil_img).unsqueeze(0).to(self.device)
         return self.predict(x)
 
-        print("Gender checkpoint loaded successfully.")
+        # Signal successful load to console (appears during demo startup)
+    # end predict_from_pil
+
+        
+    # Note: loading confirmation printed in constructor
 
     @torch.no_grad()
     def predict(self, img_tensor):
