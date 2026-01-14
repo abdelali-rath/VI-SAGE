@@ -80,7 +80,7 @@ pip install -r requirements.txt
 ## Evaluation 📊
 <img width="1280" height="612" alt="Figure_neu" src="https://github.com/user-attachments/assets/9d1c4991-b2ce-494e-8faa-5399698fb880" />
 <img width="2819" height="2374" alt="confusion_matrix_normalized (1)" src="https://github.com/user-attachments/assets/67a79f58-03f4-41ae-bcde-0e1bad59a0e9" />
-![WhatsApp Image 2026-01-04 at 02 21 31](https://github.com/user-attachments/assets/f4d913d2-5498-4613-8d8d-0208d423e3c7)
+<img width="936" height="933" alt="Screenshot 2026-01-14 174248" src="https://github.com/user-attachments/assets/2d17d164-45b7-4434-a8cd-b4e5d14f3e2c" />
 <img width="1000" height="600" alt="image" src="https://github.com/user-attachments/assets/aeae3a1f-174d-4684-97e9-a5467c0ed06f" />
 
 
