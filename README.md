@@ -22,7 +22,7 @@
 - Predicted ethnicity class
 - Small ethics/disclaimer box
 
-Target latency: **x s per frame**.
+Target latency: **0s per frame**.
 
 ---
 
@@ -57,33 +57,32 @@ pip install -r requirements.txt
 ├─ README.md
 ├─ requirements.txt
 ├─ configs/
-│  └─ resnet_baseline.yaml
-├─ data/
-│  └─ DATA_CARD.md
+│  └─ environment.yaml
 ├─ src/
-│  ├─ models/
-│  ├─ datasets/
-│  ├─ training/
-│  └─ utils/
-├─ train/
-│  └─ train.py
+│  ├─ model.py
+│  ├─ utk_loader.py
+│  ├─ training.py
+│  └─ infer.py
 ├─ eval/
-│  └─ evaluate.py
+│  └─ evaluation.py
 ├─ demo/
-│  ├─ infer_webcam.py
-│  └─ streamlit_demo.py
-├─ checkpoints/
-└─ notebooks/
+│  └─ video_server.py
+└─ checkpoints/
 ```
 
 ## Data & preprocessing 🗂️
 -
+<img width="1923" height="800" alt="output-onlinepngtools (34)" src="https://github.com/user-attachments/assets/7237f555-5089-4bbf-8fd0-08c9773802eb" />
 
 ## Model & training notes 🧩
 -
 
 ## Evaluation 📊
--
+<img width="1280" height="612" alt="Figure_neu" src="https://github.com/user-attachments/assets/9d1c4991-b2ce-494e-8faa-5399698fb880" />
+<img width="2819" height="2374" alt="confusion_matrix_normalized (1)" src="https://github.com/user-attachments/assets/67a79f58-03f4-41ae-bcde-0e1bad59a0e9" />
+![WhatsApp Image 2026-01-04 at 02 21 31](https://github.com/user-attachments/assets/f4d913d2-5498-4613-8d8d-0208d423e3c7)
+<img width="1000" height="600" alt="image" src="https://github.com/user-attachments/assets/aeae3a1f-174d-4684-97e9-a5467c0ed06f" />
+
 
 ## Ethics & limitations ⚠️🚫
 
