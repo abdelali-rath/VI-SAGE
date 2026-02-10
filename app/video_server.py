@@ -45,14 +45,14 @@ DNN_PROTO = "models/dnn/deploy.prototxt"
 DNN_MODEL = "models/dnn/res10_300x300_ssd_iter_140000_fp16.caffemodel"
 
 STATUS_UPDATE_INTERVAL = 0.8    # seconds - UI update cadence for FPS/results
-GENDER_DEBUG = False  # Deaktiviert für weniger Console-Spam
-AGE_DEBUG = False     # Deaktiviert für weniger Console-Spam
+GENDER_DEBUG = False  # Disabled to reduce console spam
+AGE_DEBUG = False     # Disabled to reduce console spam
 
-# VERBESSERTE KONSTANTEN für stabilere Vorhersagen
-HISTORY_SIZE = 12  # Erhöht von 8 auf 12
-MIN_CONFIDENCE_THRESHOLD = 0.5  # Erhöht von 0.4 auf 0.5
-AGE_SUDDEN_CHANGE_THRESHOLD = 15  # Erhöht von 6 auf 15 Jahre
-AGE_REQUIRED_CONSISTENT_FRAMES = 5  # Erhöht von 3 auf 5
+# Tuned constants for more stable predictions
+HISTORY_SIZE = 12  # increased from 8 to 12
+MIN_CONFIDENCE_THRESHOLD = 0.5  # increased from 0.4 to 0.5
+AGE_SUDDEN_CHANGE_THRESHOLD = 15  # increased from 6 to 15 years
+AGE_REQUIRED_CONSISTENT_FRAMES = 5  # increased from 3 to 5
 
 # ---------------- GLOBAL QUEUES AND STATE (initialized early) ----------------
 gender_queue = Queue(maxsize=16)
@@ -136,25 +136,41 @@ except Exception as e:
 
 # ---------------- WORKER FUNCTIONS ----------------
 def smooth_prediction(track_id, pred_type, new_value, new_confidence=None):
-    """ VERBESSERTE Glättung mit Ausreißer-Filterung und Konfidenz-Gewichtung"""
+    """
+    Smooth predictions over time to reduce noise and outliers.
+    
+    For age predictions, applies median filtering and gradual transitions.
+    For gender and ethnicity, uses confidence-weighted voting.
+    
+    Args:
+        track_id (int): Unique identifier for the tracked person.
+        pred_type (str): Type of prediction ('age', 'gender', or 'ethnicity').
+        new_value: New prediction value (float for age, str for others).
+        new_confidence (float, optional): Confidence score for the new prediction.
+        
+    Returns:
+        For age: int - Smoothed age value.
+        For gender/ethnicity: tuple - (smoothed_value, average_confidence)
+    """
+    # Improved smoothing with outlier filtering and confidence weighting
     if track_id not in prediction_history:
         prediction_history[track_id] = {'gender': [], 'age': [], 'ethnicity': []}
     
     history = prediction_history[track_id][pred_type]
     
     if pred_type == 'age':
-        #  VERBESSERUNG: Ignoriere Vorhersagen mit extremen Sprüngen SOFORT
+        # Ignore predictions with extreme jumps immediately
         if len(history) > 0:
             recent_ages = [h for h in history[-5:]]  # Letzte 5 Werte
             if len(recent_ages) > 0:
                 median_recent = np.median(recent_ages)
-                # Ignoriere neue Werte, die >15 Jahre vom Median abweichen
+                # Ignore new values that deviate > 15 years from the median
                 if abs(new_value - median_recent) > 15:
                     if AGE_DEBUG:
                         print(f"[AGE DEBUG] Ausreißer ignoriert: {new_value:.1f} (Median: {median_recent:.1f})")
                     return int(median_recent)
         
-        # Füge Wert zur Historie hinzu
+        # Append value to history
         history.append(new_value)
         if len(history) > HISTORY_SIZE:
             history.pop(0)
@@ -162,11 +178,11 @@ def smooth_prediction(track_id, pred_type, new_value, new_confidence=None):
         if len(history) < 3:
             return int(new_value)
         
-        # Robuste Statistik: Verwende Median statt Mean
+        # Robust statistic: use median instead of mean
         ages = np.array(history)
         median_age = np.median(ages)
         
-        # Entferne Ausreißer (IQR-Methode - robuster als Standardabweichung)
+        # Remove outliers (IQR method – more robust than standard deviation)
         q1, q3 = np.percentile(ages, [25, 75])
         iqr = q3 - q1
         lower_bound = q1 - 1.5 * iqr
@@ -175,14 +191,14 @@ def smooth_prediction(track_id, pred_type, new_value, new_confidence=None):
         filtered = ages[(ages >= lower_bound) & (ages <= upper_bound)]
         
         if len(filtered) > 0:
-            # Gewichteter Durchschnitt: Neuere Werte haben mehr Gewicht
+            # Weighted average: newer values get higher weights
             weights = np.linspace(0.5, 1.0, len(filtered))
             weighted_age = np.average(filtered, weights=weights)
             
-            # NEUE FUNKTION: Sanfte Übergänge - Begrenze Änderung pro Frame
+            # Smooth transitions: limit change per frame
             if track_id in last_age_display:
                 prev_age = last_age_display[track_id]
-                max_change_per_frame = 2.0  # Maximal 2 Jahre Änderung pro Frame
+                max_change_per_frame = 2.0  # maximum 2 years change per frame
                 
                 if abs(weighted_age - prev_age) > max_change_per_frame:
                     # Interpoliere schrittweise
@@ -203,7 +219,7 @@ def smooth_prediction(track_id, pred_type, new_value, new_confidence=None):
             return int(median_age)
     
     else:
-        # Gender und Ethnicity: Konfidenz-gewichtetes Voting
+        # Gender and ethnicity: confidence‑weighted voting
         if new_confidence is not None and new_confidence >= MIN_CONFIDENCE_THRESHOLD:
             history.append((new_value, new_confidence))
             if len(history) > HISTORY_SIZE:
@@ -216,7 +232,7 @@ def smooth_prediction(track_id, pred_type, new_value, new_confidence=None):
         if len(history) == 0:
             return new_value, new_confidence if new_confidence else 1.0
         
-        # Exponentiell gewichtetes Voting
+        # Exponentially weighted voting
         vote_dict = {}
         for idx, (val, conf) in enumerate(history):
             if val not in vote_dict:
@@ -232,7 +248,12 @@ def smooth_prediction(track_id, pred_type, new_value, new_confidence=None):
         return best_val, avg_conf
 
 def gender_worker():
-    """Process gender predictions asynchronously"""
+    """
+    Asynchronous worker thread for processing gender predictions.
+    
+    Continuously processes images from the gender queue, runs inference,
+    applies smoothing, and stores results.
+    """
     while not stop_event.is_set():
         try:
             pil_img, face_id = gender_queue.get(timeout=0.2)
@@ -267,7 +288,12 @@ def gender_worker():
         gender_queue.task_done()
 
 def age_worker():
-    """Process age predictions asynchronously"""
+    """
+    Asynchronous worker thread for processing age predictions.
+    
+    Continuously processes images from the age queue, runs inference,
+    applies smoothing, categorizes age ranges, and stores results.
+    """
     while not stop_event.is_set():
         try:
             pil_img, face_id = age_queue.get(timeout=0.2)
@@ -310,7 +336,12 @@ def age_worker():
         age_queue.task_done()
 
 def ethnicity_worker():
-    """Process ethnicity predictions asynchronously"""
+    """
+    Asynchronous worker thread for processing ethnicity predictions.
+    
+    Continuously processes images from the ethnicity queue, runs inference,
+    applies smoothing, and stores results.
+    """
     while not stop_event.is_set():
         try:
             pil_img, face_id = ethnicity_queue.get(timeout=0.2)
@@ -370,12 +401,12 @@ with st.expander("Wichtiger Hinweis: Zuverlässigkeit & Ethik", expanded=True):
 col_video, col_right = st.columns([3, 1])
 video_placeholder = col_video.empty()
 
-st.sidebar.header("Steuerung")
+st.sidebar.header("Controls")
 start_button = st.sidebar.button("▶ Start")
 stop_button  = st.sidebar.button("⏹ Stop")
 
-run_estimation = st.sidebar.checkbox("Attribute schätzen (Alter/Geschlecht/Ethn.)", value=False)
-maximize_fps = st.sidebar.checkbox("Maximiere FPS (aggressiv)", value=False)
+run_estimation = st.sidebar.checkbox("Estimate attributes (age / gender / ethnicity)", value=False)
+maximize_fps = st.sidebar.checkbox("Maximize FPS (aggressive)", value=False)
 st.sidebar.markdown("---")
 st.sidebar.markdown(
     "**Alterskategorien (Anzeige):**  \n"
@@ -935,7 +966,7 @@ try:
                             a = age_entry.get("age", None)
                             age_str = str(int(a)) if isinstance(a, (int, float)) else "..."
 
-                        status = "Analysiere…" if (gender == "..." and ethnicity == "..." and age_str == "...") else "Fertig"
+                        status = "Analysing…" if (gender == "..." and ethnicity == "..." and age_str == "...") else "Done"
 
                         if isinstance(g_conf, (int, float)):
                             g_disp = f"{str(gender).capitalize()} ({g_conf:.0%})"
@@ -948,7 +979,7 @@ try:
                             eth_disp = str(ethnicity)
 
                         md_lines.append(
-                            f"**Face #{track_id}** — {status}  \n- **Geschlecht:** {g_disp}  \n- **Alter:** {age_str}  \n- **Ethnie:** {eth_disp}"
+                            f"**Face #{track_id}** — {status}  \n- **Gender:** {g_disp}  \n- **Age:** {age_str}  \n- **Ethnicity:** {eth_disp}"
                         )
                     except Exception as e:
                         print(f"Results formatting error: {e}")
@@ -956,7 +987,7 @@ try:
 
                 results_box.markdown("\n\n".join(md_lines))
             else:
-                results_box.markdown(f"**FPS:** {fps:.1f} | **Gesichter:** {len(bx)}")
+                results_box.markdown(f"**FPS:** {fps:.1f} | **Faces:** {len(bx)}")
 
             status_bar.markdown(f"**Status:** Running | FPS: {fps:.1f} | Faces: {len(bx)} | Detector: {detector_type} | Est: {applied_run_estimation}")
 

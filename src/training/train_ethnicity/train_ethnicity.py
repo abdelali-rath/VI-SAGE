@@ -1,5 +1,10 @@
-# how to use:
-# python -m src.training.train_ethnicity.train_ethnicity
+"""
+Training script for ethnicity classification on UTKFace using the shared
+`MultiTaskModel` backbone (age, gender, ethnicity).
+
+Usage (from project root):
+    python -m src.training.train_ethnicity.train_ethnicity
+"""
 
 import os
 import torch
@@ -74,6 +79,13 @@ criterion = nn.CrossEntropyLoss()
 
 # ----------- TRAINING LOOP -----------
 def train():
+    """
+    Train the ethnicity head of the multi‑task model.
+
+    Only the ethnicity logits head is used for the loss computation;
+    the other tasks (age / gender) are ignored. The best model
+    (highest validation accuracy) is saved to ``CHECKPOINT_NAME``.
+    """
     os.makedirs(CHECKPOINT_DIR, exist_ok=True)
     best_val_acc = 0.0
 

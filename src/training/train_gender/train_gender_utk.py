@@ -1,5 +1,10 @@
-# how to use:
-# python src/training/train_gender/train_gender_utk.py
+"""
+Training script for gender classification on the UTKFace dataset using
+MobileNetV3-Large as a fast backbone.
+
+Usage (from project root):
+    python src/training/train_gender/train_gender_utk.py
+"""
 
 import os
 import torch
@@ -40,6 +45,12 @@ val_loader   = DataLoader(val_ds, batch_size=BATCH_SIZE)
 # MODEL (MobileNetV3-Large — VERY FAST)
 class GenderNet(nn.Module):
     def __init__(self):
+        """
+        Gender classifier based on MobileNetV3‑Large.
+
+        Removes the original classification head and replaces it with a
+        linear layer producing two logits (male / female).
+        """
         super().__init__()
         self.backbone = models.mobilenet_v3_large(weights="IMAGENET1K_V1")
         in_features = self.backbone.classifier[3].in_features
@@ -48,6 +59,15 @@ class GenderNet(nn.Module):
         self.classifier = nn.Linear(in_features, 2)
 
     def forward(self, x):
+        """
+        Forward pass.
+
+        Args:
+            x: Batch of images of shape [B, 3, H, W].
+
+        Returns:
+            Tensor of shape [B, 2] with logits for (male, female).
+        """
         feat = self.backbone(x)
         return self.classifier(feat)
 

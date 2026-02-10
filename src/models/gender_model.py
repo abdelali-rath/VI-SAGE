@@ -5,7 +5,15 @@ from torchvision import transforms
 
 
 class GenderNet(nn.Module):
+    """
+    Neural network model for gender classification using MobileNetV3 backbone.
+    
+    This model takes an image as input and predicts the gender (male or female).
+    """
     def __init__(self):
+        """
+        Initialize the GenderNet model.
+        """
         super().__init__()
 
         # Load MobileNetV3-Large backbone
@@ -25,6 +33,15 @@ class GenderNet(nn.Module):
         self.classifier = nn.Linear(hidden_dim, 2)
 
     def forward(self, x):
+        """
+        Forward pass through the model.
+        
+        Args:
+            x (torch.Tensor): Input tensor of shape [B, 3, H, W].
+            
+        Returns:
+            torch.Tensor: Gender classification logits.
+        """
         x = self.backbone.features(x)
         x = self.backbone.avgpool(x)
         x = torch.flatten(x, 1)
@@ -34,7 +51,20 @@ class GenderNet(nn.Module):
 
 
 class GenderInference:
+    """
+    Inference wrapper for gender prediction using a trained GenderNet.
+    
+    Handles model loading, preprocessing, and prediction for gender classification.
+    """
     def __init__(self, checkpoint_path, device="cpu", debug=False):
+        """
+        Initialize the GenderInference wrapper.
+        
+        Args:
+            checkpoint_path (str): Path to the model checkpoint file.
+            device (str): Device to run the model on ('cpu' or 'cuda').
+            debug (bool): Whether to print debug information.
+        """
         self.device = torch.device(device)
         self.debug = debug
         self.model = GenderNet().to(self.device)
@@ -95,12 +125,29 @@ class GenderInference:
         ])
 
     def predict_from_pil(self, pil_img):
-        """Convenience helper: accept PIL Image and return same dict as `predict`."""
+        """
+        Convenience method to predict gender directly from a PIL image.
+        
+        Args:
+            pil_img (PIL.Image): Input PIL image.
+            
+        Returns:
+            dict: Dictionary containing 'gender' and 'confidence'.
+        """
         x = self._pil_transform(pil_img).unsqueeze(0).to(self.device)
         return self.predict(x)
 
     @torch.no_grad()
     def predict(self, img_tensor):
+        """
+        Predict gender from a preprocessed tensor.
+        
+        Args:
+            img_tensor (torch.Tensor): Preprocessed input tensor.
+            
+        Returns:
+            dict: Dictionary containing 'gender' and 'confidence'.
+        """
         img_tensor = img_tensor.to(self.device)
         logits = self.model(img_tensor)
         probs = self.softmax(logits)[0]

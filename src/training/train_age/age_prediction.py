@@ -1,5 +1,9 @@
-# how to use:
-# python src/training/train_age/age_prediction.py path/zum/utkface_root
+"""
+Training script for age regression on the UTKFace dataset using MobileNetV3.
+
+Usage (from project root):
+    python src/training/train_age/age_prediction.py
+"""
 
 import os
 import sys
@@ -13,12 +17,10 @@ from tqdm import tqdm
 # =========================
 # CONFIG
 # =========================
-# Pfad relativ zum Projektroot machen
+# Pfad relativ zum Projektroot machen, damit das Skript auch
+# von unterschiedlichen Arbeitsverzeichnissen gestartet werden kann.
 PROJECT_ROOT = os.path.join(os.path.dirname(__file__), '..', '..', '..')
-if len(sys.argv) > 1:
-    DATA_DIR = sys.argv[1]
-else:
-    DATA_DIR = os.path.join(PROJECT_ROOT, 'data', 'UTKFace')  # Ordner mit Bildern
+DATA_DIR = os.path.join(PROJECT_ROOT, 'data', 'UTKFace')  # Ordner mit Bildern
 EPOCHS = 20
 BATCH_SIZE = 32
 LR = 1e-4
@@ -32,6 +34,17 @@ device = "cuda" if torch.cuda.is_available() else "cpu"
 # =========================
 class UTKAgeDataset(Dataset):
     def __init__(self, root, transform=None):
+        """
+        Dataset for UTKFace age regression.
+
+        Expects filenames of the form:
+            age_gender_race_*.jpg
+        and uses only the age value before the first underscore.
+
+        Args:
+            root: Wurzelverzeichnis mit UTKFace-Bildern.
+            transform: Optionaler Torchvision-Transform-Pipeline.
+        """
         self.files = [
             f for f in os.listdir(root)
             if f.endswith(".jpg") and "_" in f
@@ -40,9 +53,16 @@ class UTKAgeDataset(Dataset):
         self.transform = transform
 
     def __len__(self):
+        """Return the number of available images."""
         return len(self.files)
 
     def __getitem__(self, idx):
+        """
+        Load one image and its associated age value.
+
+        Returns:
+            tuple[Tensor, Tensor]: (image tensor, age as float32 tensor).
+        """
         fname = self.files[idx]
 
         # age_gender_race_xxx.jpg
@@ -76,6 +96,12 @@ transform = transforms.Compose([
 # =========================
 class AgeNet(nn.Module):
     def __init__(self):
+        """
+        Einfaches Altersregressionsmodell auf Basis von MobileNetV3-Large.
+
+        Verwendet das ImageNet‑vortrainierte Backbone und ersetzt den
+        Klassifikationskopf durch einen linearen Regressor (1 Output).
+        """
         super().__init__()
         self.backbone = models.mobilenet_v3_large(weights="IMAGENET1K_V1")
         in_features = self.backbone.classifier[3].in_features
@@ -83,6 +109,15 @@ class AgeNet(nn.Module):
         self.regressor = nn.Linear(in_features, 1)
 
     def forward(self, x):
+        """
+        Forward-Pass.
+
+        Args:
+            x: Batch von Bildern der Form [B, 3, H, W].
+
+        Returns:
+            Tensor der Form [B] mit vorhergesagtem Alter.
+        """
         x = self.backbone(x)
         return self.regressor(x).squeeze(1)
 
@@ -91,6 +126,12 @@ class AgeNet(nn.Module):
 # TRAIN
 # =========================
 def train():
+    """
+    Run training for the age model.
+
+    Loads the UTKFace dataset, trains the model for a fixed number
+    of epochs and finally saves the weights to ``CHECKPOINT``.
+    """
     dataset = UTKAgeDataset(DATA_DIR, transform)
     loader = DataLoader(
         dataset,

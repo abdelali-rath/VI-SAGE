@@ -1,13 +1,30 @@
 #!/usr/bin/env python3
+"""
+Small utility script to sanity‑check that the different model wrappers
+can be constructed and their checkpoints loaded without crashing.
+
+Intended for manual execution during development, not as a formal test.
+"""
+
 import sys
 import traceback
 from pathlib import Path
 
-# Ensure repo root is on sys.path
+# Ensure repo root is on sys.path so that `src` imports work when the file
+# is executed directly via `python tests/check_load_models.py`.
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT))
 
+
 def try_load(name, ctor, *args, **kwargs):
+    """
+    Helper to instantiate a model wrapper and report success/failure.
+
+    Args:
+        name: Human‑readable name to show in the log output.
+        ctor: Constructor or callable used to create the object.
+        *args, **kwargs: Arguments forwarded to the constructor.
+    """
     print(f"\n--- Testing {name} ---")
     try:
         obj = ctor(*args, **kwargs)
@@ -18,6 +35,12 @@ def try_load(name, ctor, *args, **kwargs):
 
 
 def main():
+    """
+    Run a set of load attempts for the age / gender / ethnicity wrappers.
+
+    Note: You may need to adjust the import paths if files are moved
+    or renamed in the project structure.
+    """
     from src import age_model as age_mod
     from src import gender_model as gender_mod
     from src import gender_infer as gender_inf_mod

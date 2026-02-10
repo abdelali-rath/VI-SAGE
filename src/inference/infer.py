@@ -50,6 +50,15 @@ class TorchInference:
                  device: Optional[str] = None,
                  n_ethnicity: int = 5,
                  use_fp16: bool = False):
+        """
+        Initialize the TorchInference pipeline.
+        
+        Args:
+            checkpoint_path (str, optional): Path to model checkpoint.
+            device (str, optional): Device to run inference on.
+            n_ethnicity (int): Number of ethnicity classes.
+            use_fp16 (bool): Whether to use FP16 precision on GPU.
+        """
         self.device = device or DEFAULT_DEVICE
         self.use_fp16 = use_fp16 and (self.device.startswith("cuda"))
         # instantiate model
@@ -61,6 +70,15 @@ class TorchInference:
             self.model.eval()
 
     def _preprocess_pil(self, pil: Image.Image) -> torch.Tensor:
+        """
+        Preprocess a PIL image for model input.
+        
+        Args:
+            pil (PIL.Image): Input PIL image.
+            
+        Returns:
+            torch.Tensor: Preprocessed tensor ready for model input.
+        """
         return PREPROCESS(pil).unsqueeze(0).to(self.device)
 
     def predict_from_image(self, pil_image: Image.Image) -> Dict[str, Any]:
@@ -141,7 +159,19 @@ class ONNXInference:
     Lightweight ONNXRuntime-based inference. If ONNXRuntime with CUDA provider is installed,
     it will use GPU (faster). If not available, falls back to CPU provider.
     """
+class ONNXInference:
+    """
+    Lightweight ONNXRuntime-based inference. If ONNXRuntime with CUDA provider is installed,
+    it will use GPU (faster). If not available, falls back to CPU provider.
+    """
     def __init__(self, onnx_path: str, provider_preference: Optional[list] = None):
+        """
+        Initialize the ONNXInference pipeline.
+        
+        Args:
+            onnx_path (str): Path to the ONNX model file.
+            provider_preference (list, optional): List of execution providers in order of preference.
+        """
         if not _HAS_ONNXRUNTIME:
             raise RuntimeError("onnxruntime not installed. Install onnxruntime-gpu or onnxruntime.")
         if not os.path.exists(onnx_path):
@@ -191,6 +221,15 @@ class ONNXInference:
 
 # small numpy softmax
 def softmax_np(x: np.ndarray) -> np.ndarray:
+    """
+    Compute softmax probabilities using numpy.
+    
+    Args:
+        x (np.ndarray): Input logits.
+        
+    Returns:
+        np.ndarray: Softmax probabilities.
+    """
     e = np.exp(x - np.max(x, axis=-1, keepdims=True))
     return e / (e.sum(axis=-1, keepdims=True) + 1e-12)
 

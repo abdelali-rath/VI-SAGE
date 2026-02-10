@@ -4,7 +4,21 @@ from torch.utils.data import Dataset
 import torch
 
 class UTKFaceGender(Dataset):
+    """
+    Dataset for gender classification based on the UTKFace filename scheme.
+
+    Expected filenames:
+        age_gender_race_*.jpg
+
+    Only the second field (gender) is used as the label.
+    """
+
     def __init__(self, root, transform=None):
+        """
+        Args:
+            root: Directory containing the UTKFace images.
+            transform: Optional torchvision transform for the images.
+        """
         self.root = root
         self.transform = transform
 
@@ -31,9 +45,16 @@ class UTKFaceGender(Dataset):
         assert len(self.img_paths) == len(self.labels), "Mismatch img_paths / labels length!"
 
     def __len__(self):
+        """Total number of samples in the dataset."""
         return len(self.img_paths)
 
     def __getitem__(self, idx):
+        """
+        Load a single sample.
+
+        Returns:
+            tuple[Tensor, Tensor]: (image tensor, label as long tensor).
+        """
         img_path = self.img_paths[idx]
         label = self.labels[idx]
 

@@ -6,9 +6,24 @@ import numpy as np
 
 
 class BasicBlock(nn.Module):
+    """
+    Basic residual block for ResNet-like architectures.
+    
+    Consists of two convolutional layers with batch normalization and ReLU activation,
+    with a skip connection for residual learning.
+    """
     expansion = 1
 
     def __init__(self, in_channels, out_channels, stride=1, downsample=None):
+        """
+        Initialize the BasicBlock.
+        
+        Args:
+            in_channels (int): Number of input channels.
+            out_channels (int): Number of output channels.
+            stride (int): Stride for the first convolution.
+            downsample (nn.Module): Downsampling module for the skip connection.
+        """
         super(BasicBlock, self).__init__()
         self.conv1 = nn.Conv2d(in_channels, out_channels, kernel_size=3, stride=stride, padding=1, bias=False)
         self.bn1 = nn.BatchNorm2d(out_channels)
@@ -18,6 +33,15 @@ class BasicBlock(nn.Module):
         self.downsample = downsample
 
     def forward(self, x):
+        """
+        Forward pass through the block.
+        
+        Args:
+            x (torch.Tensor): Input tensor.
+            
+        Returns:
+            torch.Tensor: Output tensor after residual connection.
+        """
         identity = x
         out = self.conv1(x)
         out = self.bn1(out)
@@ -32,7 +56,18 @@ class BasicBlock(nn.Module):
 
 
 def _make_layer(in_channels, out_channels, blocks, stride):
-    """Helper to create ResNet layer"""
+    """
+    Helper function to create a ResNet layer with multiple blocks.
+    
+    Args:
+        in_channels (int): Number of input channels.
+        out_channels (int): Number of output channels.
+        blocks (int): Number of BasicBlocks in the layer.
+        stride (int): Stride for the first block.
+        
+    Returns:
+        nn.Sequential: Sequential container of BasicBlocks.
+    """
     downsample = None
     if stride != 1 or in_channels != out_channels:
         downsample = nn.Sequential(
@@ -49,8 +84,18 @@ def _make_layer(in_channels, out_channels, blocks, stride):
 
 
 class MultiTaskModel(nn.Module):
-    """Multi-task model with shared backbone and separate heads"""
+    """
+    Multi-task neural network model for age, gender, and ethnicity prediction.
+    
+    Uses a shared ResNet-like backbone with separate heads for each task.
+    """
     def __init__(self, num_ethnicity_classes=5):
+        """
+        Initialize the MultiTaskModel.
+        
+        Args:
+            num_ethnicity_classes (int): Number of ethnicity classes to predict.
+        """
         super(MultiTaskModel, self).__init__()
         
         # Backbone as Sequential (matches checkpoint structure: backbone.0, backbone.1, etc.)
@@ -101,6 +146,15 @@ class MultiTaskModel(nn.Module):
         )
     
     def forward(self, x):
+        """
+        Forward pass through the model.
+        
+        Args:
+            x (torch.Tensor): Input tensor of shape [B, 3, H, W].
+            
+        Returns:
+            tuple: (age_output, gender_output, ethnicity_output)
+        """
         features = self.backbone(x)
         features = torch.flatten(features, 1)
         
@@ -112,6 +166,11 @@ class MultiTaskModel(nn.Module):
 
 
 class EthnicityInference:
+    """
+    Inference wrapper for ethnicity prediction using a trained MultiTaskModel.
+    
+    Handles model loading, preprocessing, and prediction for ethnicity classification.
+    """
     
     # Ethnicity class labels (kurz, DE)
     ETHNICITY_LABELS = {
@@ -123,6 +182,14 @@ class EthnicityInference:
     }
     
     def __init__(self, checkpoint_path, device="cpu", num_classes=5):
+        """
+        Initialize the EthnicityInference wrapper.
+        
+        Args:
+            checkpoint_path (str): Path to the model checkpoint file.
+            device (str): Device to run the model on ('cpu' or 'cuda').
+            num_classes (int): Number of ethnicity classes.
+        """
         self.device = torch.device(device)
         self.num_classes = num_classes
         
@@ -171,6 +238,18 @@ class EthnicityInference:
         ])
     
     def preprocess_image(self, image):
+        """
+        Preprocess an image for model input.
+        
+        Handles different input types (PIL Image, numpy array, torch tensor)
+        and applies the necessary transformations.
+        
+        Args:
+            image: Input image (PIL Image, numpy array, or torch tensor).
+            
+        Returns:
+            torch.Tensor: Preprocessed tensor ready for model input.
+        """
         if isinstance(image, np.ndarray):
             # Convert numpy array to PIL Image
             if image.dtype != np.uint8:
@@ -190,6 +269,19 @@ class EthnicityInference:
     
     @torch.no_grad()
     def predict(self, image):
+        """
+        Predict ethnicity from an input image.
+        
+        Args:
+            image: Input image (PIL Image, numpy array, or torch tensor).
+            
+        Returns:
+            dict: Dictionary containing prediction results with keys:
+                - 'ethnicity': Predicted ethnicity label
+                - 'confidence': Confidence score
+                - 'class_id': Class ID
+                - 'all_probabilities': Probabilities for all classes
+        """
         # Preprocess
         img_tensor = self.preprocess_image(image)
         
@@ -216,6 +308,15 @@ class EthnicityInference:
         }
     
     def predict_batch(self, images):
+        """
+        Predict ethnicity for a batch of images.
+        
+        Args:
+            images: List of input images.
+            
+        Returns:
+            list: List of dictionaries containing prediction results for each image.
+        """
         # Preprocess all images
         img_tensors = [self.preprocess_image(img) for img in images]
         batch_tensor = torch.cat(img_tensors, dim=0)
