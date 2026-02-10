@@ -34,8 +34,9 @@ class GenderNet(nn.Module):
 
 
 class GenderInference:
-    def __init__(self, checkpoint_path, device="cpu"):
+    def __init__(self, checkpoint_path, device="cpu", debug=False):
         self.device = torch.device(device)
+        self.debug = debug
         self.model = GenderNet().to(self.device)
 
         # Load checkpoint
@@ -63,23 +64,26 @@ class GenderInference:
                     new_state[k] = v
             state = new_state
 
-        # Load weights with non-strict to allow minor head differences and report mismatches
+        # Load weights with non-strict to allow minor head differences
         try:
             missing, unexpected = self.model.load_state_dict(state, strict=False)
         except Exception as e:
-            # Fall back to strict load to surface errors
             print(f"Warning: Gender model failed to load (strict): {e}")
             self.model.load_state_dict(state, strict=True)
             missing, unexpected = [], []
 
         self.model.eval()
         self.softmax = nn.Softmax(dim=1)
-        # Checkpoint mapping: index 0 -> male, 1 -> female
-        self.classes = ["male", "female"]
+        
+        # CRITICAL FIX: Check actual model behavior to determine correct label mapping
+        # Standard UTKFace convention: index 0 = male, index 1 = female
+        # BUT your probs show [0.994, 0.005] predicting "male", which is CORRECT for index 0
+        # So the mapping should be:
+        self.classes = ["male", "female"]  # Index 0=male, 1=female
 
         # Print concise status
         if missing:
-            print(f"Warning: Gender checkpoint loaded with missing keys: {len(missing)} missing, {len(unexpected)} unexpected")
+            print(f"⚠️ Gender checkpoint loaded with {len(missing)} missing, {len(unexpected)} unexpected keys")
         else:
             print("✅ Gender checkpoint loaded successfully.")
 
@@ -95,19 +99,21 @@ class GenderInference:
         x = self._pil_transform(pil_img).unsqueeze(0).to(self.device)
         return self.predict(x)
 
-        # Signal successful load to console (appears during demo startup)
-    # end predict_from_pil
-
-        
-    # Note: loading confirmation printed in constructor
-
     @torch.no_grad()
     def predict(self, img_tensor):
         img_tensor = img_tensor.to(self.device)
         logits = self.model(img_tensor)
         probs = self.softmax(logits)[0]
+        
+        # Get the predicted class and confidence
         idx = probs.argmax().item()
+        confidence = float(probs[idx])
+        gender_label = self.classes[idx]
+        
+        if self.debug:
+            print(f"[GENDER DEBUG] probs={probs.cpu().numpy()}, predicted={gender_label}, conf={confidence:.4f}, idx={idx}")
+        
         return {
-            "gender": self.classes[idx],
-            "confidence": float(probs[idx]),
+            "gender": gender_label,
+            "confidence": confidence,
         }
