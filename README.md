@@ -134,6 +134,38 @@ of editing Python constants in `app/video_server.py` and the training scripts.
 
 ---
 
+## Data & preprocessing 🗂️
+
+- This project primarily uses the **UTKFace** dataset (`data/UTKFace`) with filenames of the form  
+  `age_gender_race_*.jpg` (e.g. `25_0_2_201612312359.jpg`) to derive age, gender and ethnicity labels.
+- Standard **ImageNet normalization** and common data‑augmentation (e.g. `Resize`, `RandomHorizontalFlip`)  
+  are applied in the training scripts for better generalization.
+
+<img width="1923" height="800" alt="output-onlinepngtools (34)" src="https://github.com/user-attachments/assets/7237f555-5089-4bbf-8fd0-08c9773802eb" />
+
+---
+
+## Model & training notes 🧩
+
+- Age and gender branches use **MobileNetV3‑Large** as a lightweight backbone.
+- Ethnicity is trained on top of a shared **ResNet18‑based MultiTaskModel**.
+- All scripts use **Adam** optimizer with moderate learning rates and relatively small batch sizes  
+  to keep training feasible on a single GPU or even CPU.
+
+---
+
+## Evaluation 📊
+
+Below are some example evaluation plots (age error distribution, ROC/PR curves, confusion matrices, etc.)
+from experiments with this repository:
+
+<img width="1280" height="612" alt="Figure_neu" src="https://github.com/user-attachments/assets/9d1c4991-b2ce-494e-8faa-5399698fb880" />
+<img width="2819" height="2374" alt="confusion_matrix_normalized (1)" src="https://github.com/user-attachments/assets/67a79f58-03f4-41ae-bcde-0e1bad59a0e9" />
+<img width="936" height="933" alt="Screenshot 2026-01-14 174248" src="https://github.com/user-attachments/assets/2d17d164-45b7-4434-a8cd-b4e5d14f3e2c" />
+<img width="1000" height="600" alt="image" src="https://github.com/user-attachments/assets/aeae3a1f-174d-4684-97e9-a5467c0ed06f" />
+
+---
+
 ## Repository layout 📁
 
 ```bash
