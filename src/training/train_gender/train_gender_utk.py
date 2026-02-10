@@ -15,20 +15,22 @@ from utk_loader import UTKFaceGender
 from tqdm.auto import tqdm
 
 # CONFIG
-PROJECT_ROOT = os.path.join(os.path.dirname(__file__), '..', '..', '..')
-DATA_PATH = os.path.join(PROJECT_ROOT, 'data', 'UTKFace')
+PROJECT_ROOT = os.path.join(os.path.dirname(__file__), "..", "..", "..")
+DATA_PATH = os.path.join(PROJECT_ROOT, "data", "UTKFace")
 BATCH_SIZE = 64
 EPOCHS = 5
 LR = 1e-4
-CHECKPOINT = os.path.join(PROJECT_ROOT, 'checkpoints', 'utk_gender_model.pt')
+CHECKPOINT = os.path.join(PROJECT_ROOT, "checkpoints", "utk_gender_model.pt")
 
 # DATASET
-transform = transforms.Compose([
-    transforms.Resize((224,224)),
-    transforms.RandomHorizontalFlip(),
-    transforms.ToTensor(),
-    transforms.Normalize([0.485,0.456,0.406], [0.229,0.224,0.225])
-])
+transform = transforms.Compose(
+    [
+        transforms.Resize((224, 224)),
+        transforms.RandomHorizontalFlip(),
+        transforms.ToTensor(),
+        transforms.Normalize([0.485, 0.456, 0.406], [0.229, 0.224, 0.225]),
+    ]
+)
 
 if not os.path.exists(DATA_PATH):
     raise FileNotFoundError(f"Dataset not found: {DATA_PATH}")
@@ -40,7 +42,8 @@ val_size = len(dataset) - train_size
 
 train_ds, val_ds = random_split(dataset, [train_size, val_size])
 train_loader = DataLoader(train_ds, batch_size=BATCH_SIZE, shuffle=True)
-val_loader   = DataLoader(val_ds, batch_size=BATCH_SIZE)
+val_loader = DataLoader(val_ds, batch_size=BATCH_SIZE)
+
 
 # MODEL (MobileNetV3-Large — VERY FAST)
 class GenderNet(nn.Module):
@@ -70,6 +73,7 @@ class GenderNet(nn.Module):
         """
         feat = self.backbone(x)
         return self.classifier(feat)
+
 
 device = "cuda" if torch.cuda.is_available() else "cpu"
 model = GenderNet().to(device)
@@ -111,7 +115,9 @@ for epoch in range(1, EPOCHS + 1):
 
     val_acc = correct / total
 
-    print(f"Epoch {epoch}/{EPOCHS} | Train Loss: {train_loss:.4f} | Val Acc: {val_acc:.4f}")
+    print(
+        f"Epoch {epoch}/{EPOCHS} | Train Loss: {train_loss:.4f} | Val Acc: {val_acc:.4f}"
+    )
 
 # SAVE MODEL
 os.makedirs(os.path.dirname(CHECKPOINT), exist_ok=True)

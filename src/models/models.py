@@ -6,14 +6,15 @@ This file provides:
 - checkpoints
 """
 
-
 from typing import Tuple
 import torch
 import torch.nn as nn
 import torchvision.models as models
 
 
-def build_base_backbone(name: str = "resnet18", pretrained: bool = True) -> Tuple[nn.Module, int]:
+def build_base_backbone(
+    name: str = "resnet18", pretrained: bool = True
+) -> Tuple[nn.Module, int]:
     """
     Return (feature_extractor_module, feature_dim).
     feature_extractor expects input [B,3,H,W] and returns [B,feature_dim].
@@ -40,9 +41,16 @@ class MultiTaskModel(nn.Module):
       - ethnicity_head: multi-class logits
     """
 
-    def __init__(self, backbone_name: str = "resnet18", n_ethnicity: int = 5, pretrained: bool = True):
+    def __init__(
+        self,
+        backbone_name: str = "resnet18",
+        n_ethnicity: int = 5,
+        pretrained: bool = True,
+    ):
         super().__init__()
-        self.backbone, feat_dim = build_base_backbone(backbone_name, pretrained=pretrained)
+        self.backbone, feat_dim = build_base_backbone(
+            backbone_name, pretrained=pretrained
+        )
         self.feat_dim = feat_dim
 
         # heads
@@ -50,21 +58,21 @@ class MultiTaskModel(nn.Module):
             nn.Flatten(),
             nn.Linear(feat_dim, 128),
             nn.ReLU(),
-            nn.Linear(128, 1)  # regression (years)
+            nn.Linear(128, 1),  # regression (years)
         )
 
         self.gender_head = nn.Sequential(
             nn.Flatten(),
             nn.Linear(feat_dim, 64),
             nn.ReLU(),
-            nn.Linear(64, 2)  # logits for 2 classes
+            nn.Linear(64, 2),  # logits for 2 classes
         )
 
         self.ethnicity_head = nn.Sequential(
             nn.Flatten(),
             nn.Linear(feat_dim, 128),
             nn.ReLU(),
-            nn.Linear(128, n_ethnicity)  # logits for ethnicity classes
+            nn.Linear(128, n_ethnicity),  # logits for ethnicity classes
         )
 
     def forward(self, x):
@@ -73,14 +81,14 @@ class MultiTaskModel(nn.Module):
         returns dict with raw outputs (no activation)
         """
         feats = self.backbone(x)  # [B, C, 1, 1]
-        age = self.age_head(feats)            # [B,1]
+        age = self.age_head(feats)  # [B,1]
         gender_logits = self.gender_head(feats)  # [B,2]
         eth_logits = self.ethnicity_head(feats)  # [B,n_eth]
 
         return {
-            "age": age.squeeze(1),          # [B]
-            "gender_logits": gender_logits, # [B,2]
-            "ethnicity_logits": eth_logits  # [B,n_eth]
+            "age": age.squeeze(1),  # [B]
+            "gender_logits": gender_logits,  # [B,2]
+            "ethnicity_logits": eth_logits,  # [B,n_eth]
         }
 
 

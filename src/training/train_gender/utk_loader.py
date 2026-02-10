@@ -3,6 +3,7 @@ from PIL import Image
 from torch.utils.data import Dataset
 import torch
 
+
 class UTKFaceGender(Dataset):
     """
     Dataset for gender classification based on the UTKFace filename scheme.
@@ -42,7 +43,9 @@ class UTKFaceGender(Dataset):
             self.img_paths.append(os.path.join(root, f))
             self.labels.append(gender)
 
-        assert len(self.img_paths) == len(self.labels), "Mismatch img_paths / labels length!"
+        assert len(self.img_paths) == len(
+            self.labels
+        ), "Mismatch img_paths / labels length!"
 
     def __len__(self):
         """Total number of samples in the dataset."""

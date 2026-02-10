@@ -13,16 +13,15 @@ from torch.utils.data import DataLoader, random_split
 from torchvision import transforms
 from tqdm import tqdm
 
-from .utk_loader import UTKFaceMultiTask 
+from .utk_loader import UTKFaceMultiTask
 from ...models.models import MultiTaskModel
-
 
 # ----------- CONFIGURATION -----------
 
-PROJECT_ROOT = os.path.join(os.path.dirname(__file__), '..', '..', '..')
-DATA_PATH = os.path.join(PROJECT_ROOT, 'data', 'UTKFace')
+PROJECT_ROOT = os.path.join(os.path.dirname(__file__), "..", "..", "..")
+DATA_PATH = os.path.join(PROJECT_ROOT, "data", "UTKFace")
 
-CHECKPOINT_DIR = os.path.join(PROJECT_ROOT, 'checkpoints')
+CHECKPOINT_DIR = os.path.join(PROJECT_ROOT, "checkpoints")
 CHECKPOINT_NAME = "utk_ethnicity_model.pt"
 
 BATCH_SIZE = 64
@@ -41,15 +40,14 @@ print(f"Using device: {DEVICE}")
 # ---------- DATA PREPARATION ----------
 
 # Standard ImageNet normalization
-transform = transforms.Compose([
-    transforms.Resize((224, 224)),
-    transforms.RandomHorizontalFlip(),
-    transforms.ToTensor(),
-    transforms.Normalize(
-        mean=[0.485, 0.456, 0.406], 
-        std=[0.229, 0.224, 0.225]
-    )
-])
+transform = transforms.Compose(
+    [
+        transforms.Resize((224, 224)),
+        transforms.RandomHorizontalFlip(),
+        transforms.ToTensor(),
+        transforms.Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225]),
+    ]
+)
 
 
 # Initialize Dataset
@@ -95,23 +93,23 @@ def train():
         # ----- TRAIN STEP -----
         model.train()
         running_loss = 0.0
-        
+
         loop = tqdm(train_loader, desc=f"Epoch {epoch}/{EPOCHS}", leave=False)
-        
+
         for images, targets in loop:
             images = images.to(DEVICE)
             # Extract ethnicity labels from the dictionary
             labels = targets["ethnicity"].to(DEVICE)
 
             optimizer.zero_grad()
-            
+
             # Forward pass
             outputs = model(images)
             ethnicity_logits = outputs["ethnicity_logits"]
-            
+
             # Calculate loss ONLY on ethnicity
             loss = criterion(ethnicity_logits, labels)
-            
+
             loss.backward()
             optimizer.step()
 
@@ -133,12 +131,14 @@ def train():
                 outputs = model(images)
                 # Get predictions
                 _, predicted = torch.max(outputs["ethnicity_logits"], 1)
-                
+
                 total += labels.size(0)
                 correct += (predicted == labels).sum().item()
 
         val_acc = 100 * correct / total
-        print(f"Epoch {epoch} | Train Loss: {avg_train_loss:.4f} | Val Acc: {val_acc:.2f}%")
+        print(
+            f"Epoch {epoch} | Train Loss: {avg_train_loss:.4f} | Val Acc: {val_acc:.2f}%"
+        )
 
         # Save Best Model
         if val_acc > best_val_acc:
@@ -146,6 +146,7 @@ def train():
             save_path = os.path.join(CHECKPOINT_DIR, CHECKPOINT_NAME)
             torch.save(model.state_dict(), save_path)
             print(f"    -> Saved best model to {save_path}")
+
 
 if __name__ == "__main__":
     train()

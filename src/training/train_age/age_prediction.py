@@ -19,12 +19,12 @@ from tqdm import tqdm
 # =========================
 # Pfad relativ zum Projektroot machen, damit das Skript auch
 # von unterschiedlichen Arbeitsverzeichnissen gestartet werden kann.
-PROJECT_ROOT = os.path.join(os.path.dirname(__file__), '..', '..', '..')
-DATA_DIR = os.path.join(PROJECT_ROOT, 'data', 'UTKFace')  # Ordner mit Bildern
+PROJECT_ROOT = os.path.join(os.path.dirname(__file__), "..", "..", "..")
+DATA_DIR = os.path.join(PROJECT_ROOT, "data", "UTKFace")  # Ordner mit Bildern
 EPOCHS = 20
 BATCH_SIZE = 32
 LR = 1e-4
-CHECKPOINT = os.path.join(PROJECT_ROOT, 'checkpoints', 'utk_age_model.pt')
+CHECKPOINT = os.path.join(PROJECT_ROOT, "checkpoints", "utk_age_model.pt")
 
 device = "cuda" if torch.cuda.is_available() else "cpu"
 
@@ -45,10 +45,7 @@ class UTKAgeDataset(Dataset):
             root: Wurzelverzeichnis mit UTKFace-Bildern.
             transform: Optionaler Torchvision-Transform-Pipeline.
         """
-        self.files = [
-            f for f in os.listdir(root)
-            if f.endswith(".jpg") and "_" in f
-        ]
+        self.files = [f for f in os.listdir(root) if f.endswith(".jpg") and "_" in f]
         self.root = root
         self.transform = transform
 
@@ -81,14 +78,13 @@ class UTKAgeDataset(Dataset):
 # =========================
 # TRANSFORM
 # =========================
-transform = transforms.Compose([
-    transforms.Resize((224, 224)),
-    transforms.ToTensor(),
-    transforms.Normalize(
-        [0.485, 0.456, 0.406],
-        [0.229, 0.224, 0.225]
-    )
-])
+transform = transforms.Compose(
+    [
+        transforms.Resize((224, 224)),
+        transforms.ToTensor(),
+        transforms.Normalize([0.485, 0.456, 0.406], [0.229, 0.224, 0.225]),
+    ]
+)
 
 
 # =========================
@@ -134,11 +130,7 @@ def train():
     """
     dataset = UTKAgeDataset(DATA_DIR, transform)
     loader = DataLoader(
-        dataset,
-        batch_size=BATCH_SIZE,
-        shuffle=True,
-        num_workers=4,
-        pin_memory=True
+        dataset, batch_size=BATCH_SIZE, shuffle=True, num_workers=4, pin_memory=True
     )
 
     model = AgeNet().to(device)
