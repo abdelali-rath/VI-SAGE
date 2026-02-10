@@ -12,11 +12,13 @@ from tqdm import tqdm
 # =========================
 # CONFIG
 # =========================
-DATA_DIR = r"C:\Users\ijaha\Downloads\UTKFACE"               # Ordner mit Bildern
+# Pfad relativ zum Projektroot machen
+PROJECT_ROOT = os.path.join(os.path.dirname(__file__), '..', '..')
+DATA_DIR = os.path.join(PROJECT_ROOT, 'data', 'UTKFace')  # Ordner mit Bildern
 EPOCHS = 20
 BATCH_SIZE = 32
 LR = 1e-4
-CHECKPOINT = "checkpoints/utk_age_mobilenet.pt"
+CHECKPOINT = os.path.join(PROJECT_ROOT, 'checkpoints', 'utk_age_mobilenet.pt')
 
 device = "cuda" if torch.cuda.is_available() else "cpu"
 
@@ -120,7 +122,7 @@ def train():
         avg = total_loss / len(loader)
         print(f"Epoch {epoch+1}: MAE = {avg:.2f}")
 
-    os.makedirs("checkpoints", exist_ok=True)
+    os.makedirs(os.path.dirname(CHECKPOINT), exist_ok=True)
     torch.save(model.state_dict(), CHECKPOINT)
     print("✅ Model saved:", CHECKPOINT)
 

@@ -11,9 +11,10 @@ from src.models.models import MultiTaskModel
 
 # ----------- CONFIGURATION -----------
 
-DATA_PATH = r"C:\Users\meist\Downloads\UTKFace"
+PROJECT_ROOT = os.path.join(os.path.dirname(__file__), '..', '..')
+DATA_PATH = os.path.join(PROJECT_ROOT, 'data', 'UTKFace')
 
-CHECKPOINT_DIR = "checkpoints"
+CHECKPOINT_DIR = os.path.join(PROJECT_ROOT, 'checkpoints')
 CHECKPOINT_NAME = "ethnicity_model.pt"
 
 BATCH_SIZE = 64

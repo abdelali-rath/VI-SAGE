@@ -7,11 +7,12 @@ from utk_loader import UTKFaceGender
 from tqdm.auto import tqdm
 
 # CONFIG
-DATA_PATH = "/Users/a.hussain/VI-SAGE/data/UTKFace"
+PROJECT_ROOT = os.path.join(os.path.dirname(__file__), '..', '..')
+DATA_PATH = os.path.join(PROJECT_ROOT, 'data', 'UTKFace')
 BATCH_SIZE = 64
 EPOCHS = 5
 LR = 1e-4
-CHECKPOINT = "checkpoints/utk_gender_mobilenet.pt"
+CHECKPOINT = os.path.join(PROJECT_ROOT, 'checkpoints', 'utk_gender_mobilenet.pt')
 
 # DATASET
 transform = transforms.Compose([
@@ -90,6 +91,6 @@ for epoch in range(1, EPOCHS + 1):
     print(f"Epoch {epoch}/{EPOCHS} | Train Loss: {train_loss:.4f} | Val Acc: {val_acc:.4f}")
 
 # SAVE MODEL
-os.makedirs("checkpoints", exist_ok=True)
+os.makedirs(os.path.dirname(CHECKPOINT), exist_ok=True)
 torch.save(model.state_dict(), CHECKPOINT)
 print(f"Model saved → {CHECKPOINT}")

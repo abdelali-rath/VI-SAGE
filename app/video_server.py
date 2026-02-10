@@ -36,9 +36,9 @@ DETECT_CONF = 0.5
 DETECT_EVERY_N_FRAMES = 3       # default detection frequency
 
 INFERENCE_WORKER_COUNT = 1
-CHECKPOINT_PATH = "checkpoints/facesense_debug.pt"
+CHECKPOINT_PATH = os.path.join(ROOT, "checkpoints", "facesense_debug.pt")
 USE_ONNX = False
-ONNX_PATH = "checkpoints/facesense.onnx"
+ONNX_PATH = os.path.join(ROOT, "checkpoints", "facesense.onnx")
 USE_FP16 = True
 
 DNN_PROTO = "models/dnn/deploy.prototxt"
@@ -107,7 +107,7 @@ ethnicity_transform = transforms.Compose([
 # ---------------- MODEL INITIALIZATION ----------------
 try:
     gender_model = GenderInference(
-        checkpoint_path="checkpoints/utk_gender_mobilenet.pt",
+        checkpoint_path=os.path.join(ROOT, "checkpoints", "utk_gender_mobilenet.pt"),
         device="cpu",
         debug=False  # Debug deaktiviert
     )
@@ -117,7 +117,7 @@ except Exception as e:
 
 try:
     age_model = AgeInference(
-        checkpoint_path="checkpoints/utk_age_mobilenet.pt",
+        checkpoint_path=os.path.join(ROOT, "checkpoints", "utk_age_mobilenet.pt"),
         device="cpu",
         debug=False  # Debug deaktiviert
     )
@@ -127,7 +127,7 @@ except Exception as e:
 
 try:
     ethnicity_model = EthnicityInference(
-        checkpoint_path="checkpoints/ethnicity_model.pt",
+        checkpoint_path=os.path.join(ROOT, "checkpoints", "ethnicity_model.pt"),
         device="cpu"
     )
 except Exception as e:
