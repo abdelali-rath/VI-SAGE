@@ -1,3 +1,6 @@
+# how to use:
+# python -m src.training.train_ethnicity.train_ethnicity
+
 import os
 import torch
 import torch.nn as nn
@@ -5,17 +8,17 @@ from torch.utils.data import DataLoader, random_split
 from torchvision import transforms
 from tqdm import tqdm
 
-from utk_loader import UTKFaceMultiTask 
-from src.models.models import MultiTaskModel
+from .utk_loader import UTKFaceMultiTask 
+from ...models.models import MultiTaskModel
 
 
 # ----------- CONFIGURATION -----------
 
-PROJECT_ROOT = os.path.join(os.path.dirname(__file__), '..', '..')
+PROJECT_ROOT = os.path.join(os.path.dirname(__file__), '..', '..', '..')
 DATA_PATH = os.path.join(PROJECT_ROOT, 'data', 'UTKFace')
 
 CHECKPOINT_DIR = os.path.join(PROJECT_ROOT, 'checkpoints')
-CHECKPOINT_NAME = "ethnicity_model.pt"
+CHECKPOINT_NAME = "utk_ethnicity_model.pt"
 
 BATCH_SIZE = 64
 EPOCHS = 12

@@ -251,7 +251,7 @@ class EthnicityInference:
 if __name__ == "__main__":
     # Initialize model
     model = EthnicityInference(
-        checkpoint_path="checkpoints/ethnicity_model.pt",
+        checkpoint_path="checkpoints/utk_ethnicity_model.pt",
         device="cuda" if torch.cuda.is_available() else "cpu"
     )
     

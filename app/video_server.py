@@ -2,7 +2,7 @@
 ∀I-SAGE
 Streamlit video demo with GPU-accelerated inference.
 Run with:
-        streamlit run demo/video_server.py
+        streamlit run app/video_server.py
 in bash
 """
 
@@ -107,7 +107,7 @@ ethnicity_transform = transforms.Compose([
 # ---------------- MODEL INITIALIZATION ----------------
 try:
     gender_model = GenderInference(
-        checkpoint_path=os.path.join(ROOT, "checkpoints", "utk_gender_mobilenet.pt"),
+        checkpoint_path=os.path.join(ROOT, "checkpoints", "utk_gender_model.pt"),
         device="cpu",
         debug=False  # Debug deaktiviert
     )
@@ -117,7 +117,7 @@ except Exception as e:
 
 try:
     age_model = AgeInference(
-        checkpoint_path=os.path.join(ROOT, "checkpoints", "utk_age_mobilenet.pt"),
+        checkpoint_path=os.path.join(ROOT, "checkpoints", "utk_age_model.pt"),
         device="cpu",
         debug=False  # Debug deaktiviert
     )
@@ -127,7 +127,7 @@ except Exception as e:
 
 try:
     ethnicity_model = EthnicityInference(
-        checkpoint_path=os.path.join(ROOT, "checkpoints", "ethnicity_model.pt"),
+        checkpoint_path=os.path.join(ROOT, "checkpoints", "utk_ethnicity_model.pt"),
         device="cpu"
     )
 except Exception as e:

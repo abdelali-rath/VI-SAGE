@@ -25,12 +25,12 @@ def main():
 
     # checkpoints to try
     try_load("Age (age_model.pt)", age_mod.AgeInference, "checkpoints/age_model.pt", "cpu", True)
-    try_load("Age (utk_age_mobilenet.pt)", age_mod.AgeInference, "checkpoints/utk_age_mobilenet.pt", "cpu", True)
+    try_load("Age (utk_age_model.pt)", age_mod.AgeInference, "checkpoints/utk_age_model.pt", "cpu", True)
 
-    try_load("Gender (gender_model.GenderInference)", gender_mod.GenderInference, "checkpoints/utk_gender_mobilenet.pt", "cpu")
-    try_load("Gender (gender_infer.GenderInference)", gender_inf_mod.GenderInference, "checkpoints/utk_gender_mobilenet.pt")
+    try_load("Gender (gender_model.GenderInference)", gender_mod.GenderInference, "checkpoints/utk_gender_model.pt", "cpu")
+    try_load("Gender (gender_infer.GenderInference)", gender_inf_mod.GenderInference, "checkpoints/utk_gender_model.pt")
 
-    try_load("Ethnicity (ethnicity_model)", eth_mod.EthnicityInference, "checkpoints/ethnicity_model.pt", "cpu")
+    try_load("Ethnicity (ethnicity_model)", eth_mod.EthnicityInference, "checkpoints/utk_ethnicity_model.pt", "cpu")
 
 
 if __name__ == '__main__':

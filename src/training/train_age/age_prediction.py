@@ -1,7 +1,8 @@
 # how to use:
-# python age_prediction.py path/zum/utkface_root
+# python src/training/train_age/age_prediction.py path/zum/utkface_root
 
 import os
+import sys
 import torch
 import torch.nn as nn
 from torch.utils.data import Dataset, DataLoader
@@ -13,12 +14,15 @@ from tqdm import tqdm
 # CONFIG
 # =========================
 # Pfad relativ zum Projektroot machen
-PROJECT_ROOT = os.path.join(os.path.dirname(__file__), '..', '..')
-DATA_DIR = os.path.join(PROJECT_ROOT, 'data', 'UTKFace')  # Ordner mit Bildern
+PROJECT_ROOT = os.path.join(os.path.dirname(__file__), '..', '..', '..')
+if len(sys.argv) > 1:
+    DATA_DIR = sys.argv[1]
+else:
+    DATA_DIR = os.path.join(PROJECT_ROOT, 'data', 'UTKFace')  # Ordner mit Bildern
 EPOCHS = 20
 BATCH_SIZE = 32
 LR = 1e-4
-CHECKPOINT = os.path.join(PROJECT_ROOT, 'checkpoints', 'utk_age_mobilenet.pt')
+CHECKPOINT = os.path.join(PROJECT_ROOT, 'checkpoints', 'utk_age_model.pt')
 
 device = "cuda" if torch.cuda.is_available() else "cpu"
 

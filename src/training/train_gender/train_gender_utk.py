@@ -1,3 +1,6 @@
+# how to use:
+# python src/training/train_gender/train_gender_utk.py
+
 import os
 import torch
 import torch.nn as nn
@@ -7,12 +10,12 @@ from utk_loader import UTKFaceGender
 from tqdm.auto import tqdm
 
 # CONFIG
-PROJECT_ROOT = os.path.join(os.path.dirname(__file__), '..', '..')
+PROJECT_ROOT = os.path.join(os.path.dirname(__file__), '..', '..', '..')
 DATA_PATH = os.path.join(PROJECT_ROOT, 'data', 'UTKFace')
 BATCH_SIZE = 64
 EPOCHS = 5
 LR = 1e-4
-CHECKPOINT = os.path.join(PROJECT_ROOT, 'checkpoints', 'utk_gender_mobilenet.pt')
+CHECKPOINT = os.path.join(PROJECT_ROOT, 'checkpoints', 'utk_gender_model.pt')
 
 # DATASET
 transform = transforms.Compose([
