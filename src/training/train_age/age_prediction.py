@@ -1,0 +1,132 @@
+# how to use:
+# python age_prediction.py path/zum/utkface_root
+
+import os
+import torch
+import torch.nn as nn
+from torch.utils.data import Dataset, DataLoader
+from torchvision import transforms, models
+from PIL import Image
+from tqdm import tqdm
+
+# =========================
+# CONFIG
+# =========================
+DATA_DIR = r"C:\Users\ijaha\Downloads\UTKFACE"               # Ordner mit Bildern
+EPOCHS = 20
+BATCH_SIZE = 32
+LR = 1e-4
+CHECKPOINT = "checkpoints/utk_age_mobilenet.pt"
+
+device = "cuda" if torch.cuda.is_available() else "cpu"
+
+
+# =========================
+# DATASET
+# =========================
+class UTKAgeDataset(Dataset):
+    def __init__(self, root, transform=None):
+        self.files = [
+            f for f in os.listdir(root)
+            if f.endswith(".jpg") and "_" in f
+        ]
+        self.root = root
+        self.transform = transform
+
+    def __len__(self):
+        return len(self.files)
+
+    def __getitem__(self, idx):
+        fname = self.files[idx]
+
+        # age_gender_race_xxx.jpg
+        age = int(fname.split("_")[0])
+
+        img_path = os.path.join(self.root, fname)
+        img = Image.open(img_path).convert("RGB")
+
+        if self.transform:
+            img = self.transform(img)
+
+        age = torch.tensor(age, dtype=torch.float32)
+        return img, age
+
+
+# =========================
+# TRANSFORM
+# =========================
+transform = transforms.Compose([
+    transforms.Resize((224, 224)),
+    transforms.ToTensor(),
+    transforms.Normalize(
+        [0.485, 0.456, 0.406],
+        [0.229, 0.224, 0.225]
+    )
+])
+
+
+# =========================
+# MODEL
+# =========================
+class AgeNet(nn.Module):
+    def __init__(self):
+        super().__init__()
+        self.backbone = models.mobilenet_v3_large(weights="IMAGENET1K_V1")
+        in_features = self.backbone.classifier[3].in_features
+        self.backbone.classifier[3] = nn.Identity()
+        self.regressor = nn.Linear(in_features, 1)
+
+    def forward(self, x):
+        x = self.backbone(x)
+        return self.regressor(x).squeeze(1)
+
+
+# =========================
+# TRAIN
+# =========================
+def train():
+    dataset = UTKAgeDataset(DATA_DIR, transform)
+    loader = DataLoader(
+        dataset,
+        batch_size=BATCH_SIZE,
+        shuffle=True,
+        num_workers=4,
+        pin_memory=True
+    )
+
+    model = AgeNet().to(device)
+    criterion = nn.L1Loss()  # MAE
+    optimizer = torch.optim.Adam(model.parameters(), lr=LR)
+
+    for epoch in range(EPOCHS):
+        model.train()
+        total_loss = 0
+
+        pbar = tqdm(loader, desc=f"Epoch {epoch+1}/{EPOCHS}")
+        for imgs, ages in pbar:
+            imgs = imgs.to(device)
+            ages = ages.to(device)
+
+            preds = model(imgs)
+            loss = criterion(preds, ages)
+
+            optimizer.zero_grad()
+            loss.backward()
+            optimizer.step()
+
+            total_loss += loss.item()
+            pbar.set_postfix(MAE=loss.item())
+
+        avg = total_loss / len(loader)
+        print(f"Epoch {epoch+1}: MAE = {avg:.2f}")
+
+    os.makedirs("checkpoints", exist_ok=True)
+    torch.save(model.state_dict(), CHECKPOINT)
+    print("✅ Model saved:", CHECKPOINT)
+
+
+# =========================
+# MAIN
+# =========================
+if __name__ == "__main__":
+    train()

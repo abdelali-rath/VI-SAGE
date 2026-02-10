@@ -19,7 +19,7 @@ from PIL import Image
 from torchvision import transforms
 
 # Local import (MultiTaskModel + load_checkpoint)
-from models import MultiTaskModel, load_checkpoint
+from ..models.models import MultiTaskModel, load_checkpoint
 
 # Optional ONNXRuntime
 try:
