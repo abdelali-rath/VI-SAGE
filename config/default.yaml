@@ -1,1 +1,141 @@
+project:
+  name: "∀I-SAGE"
+  description: "Universal / Intelligent Facial Attribute Estimation (age, gender, ethnicity) with realtime demo."
+  seed: 42
+
+paths:
+  project_root: "."  # interpreted relative to repo root when loading
+
+  data:
+    utkface: "data/UTKFace"
+
+  checkpoints:
+    dir: "checkpoints"
+    age: "checkpoints/utk_age_model.pt"
+    gender: "checkpoints/utk_gender_model.pt"
+    ethnicity: "checkpoints/utk_ethnicity_model.pt"
+    facesense_torchscript: "checkpoints/facesense_debug.pt"
+    facesense_onnx: "checkpoints/facesense.onnx"
+
+  detectors:
+    dnn_proto: "models/dnn/deploy.prototxt"
+    dnn_model: "models/dnn/res10_300x300_ssd_iter_140000_fp16.caffemodel"
+    haar_cascade: "haarcascade_frontalface_default.xml"  # resolved via cv2.data.haarcascades
+
+
+training:
+  # Common training defaults (can be overridden per task)
+  defaults:
+    batch_size: 64
+    learning_rate: 1.0e-4
+    num_workers: 4
+    validation_split: 0.1
+    image_size: [224, 224]
+    normalization:
+      mean: [0.485, 0.456, 0.406]
+      std: [0.229, 0.224, 0.225]
+
+  age:
+    enabled: true
+    data_dir: "${paths.data.utkface}"
+    checkpoint: "${paths.checkpoints.age}"
+
+    # Mirrors src/training/train_age/age_prediction.py
+    epochs: 20
+    batch_size: 32
+    learning_rate: 1.0e-4
+    num_workers: 4
+
+    model:
+      backbone: "mobilenet_v3_large"
+      weights: "IMAGENET1K_V1"
+      head: "regression"
+
+  gender:
+    enabled: true
+    data_dir: "${paths.data.utkface}"
+    checkpoint: "${paths.checkpoints.gender}"
+
+    # Mirrors src/training/train_gender/train_gender_utk.py
+    epochs: 5
+    batch_size: 64
+    learning_rate: 1.0e-4
+    num_workers: 4
+
+    model:
+      backbone: "mobilenet_v3_large"
+      weights: "IMAGENET1K_V1"
+      head: "2_way_classifier"  # (male, female)
+
+  ethnicity:
+    enabled: true
+    data_dir: "${paths.data.utkface}"
+    checkpoint: "${paths.checkpoints.ethnicity}"
+
+    # Mirrors src/training/train_ethnicity/train_ethnicity.py
+    epochs: 12
+    batch_size: 64
+    learning_rate: 1.0e-4
+    num_workers: 0
+
+    model:
+      backbone: "resnet18"
+      n_ethnicity: 5   # White, Black, Asian, Indian, Other
+
+
+demo:
+  streamlit:
+    page_title: "∀I-SAGE — Live Webcam Demo"
+    layout: "wide"
+
+  video:
+    capture_width: 1280      # CAP_WIDTH in app/video_server.py
+    capture_height: 720      # CAP_HEIGHT
+    device_index: 0
+
+  detection:
+    base_width: 320          # DETECT_WIDTH
+    confidence_threshold: 0.5
+    every_n_frames: 3        # DETECT_EVERY_N_FRAMES
+
+    maximize_fps:
+      min_every_n_frames: 4  # when maximize_fps=True: at least this many frames between detections
+      width_scale: 0.75      # applied on base_width
+      min_width: 240
+
+  inference:
+    worker_count: 1          # INFERENCE_WORKER_COUNT
+
+    facesense:
+      checkpoint_path: "${paths.checkpoints.facesense_torchscript}"
+      use_onnx: false
+      onnx_path: "${paths.checkpoints.facesense_onnx}"
+      use_fp16: true
+
+    device_priority:
+      allow_cuda: true
+      allow_cpu: true
+
+  temporal_smoothing:
+    history_size: 12               # HISTORY_SIZE
+    min_confidence_threshold: 0.5  # MIN_CONFIDENCE_THRESHOLD
+
+    age:
+      sudden_change_threshold: 15          # AGE_SUDDEN_CHANGE_THRESHOLD
+      required_consistent_frames: 5        # AGE_REQUIRED_CONSISTENT_FRAMES
+      max_change_per_frame: 2.0
+
+  tracking:
+    iou_threshold: 0.3            # IOU_THRESHOLD
+    max_frames_missing: 5         # MAX_FRAMES_MISSING
+
+  ui:
+    status_update_interval: 0.8   # STATUS_UPDATE_INTERVAL (seconds)
+    show_ethics_disclaimer: true
+    show_attribute_checkboxes: true
+
+  debug:
+    gender_debug: false
+    age_debug: false
+
 

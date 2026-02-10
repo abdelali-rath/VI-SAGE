@@ -23,36 +23,87 @@ import numpy as np
 from queue import Queue, Empty
 from PIL import Image
 import platform
+import yaml
 
 # inference
 from src.inference.infer import get_best_inference
 
-# ---------------- CONFIG (defaults) ----------------
-CAP_WIDTH = 1280
-CAP_HEIGHT = 720
 
-DETECT_WIDTH = 320              # default detection resolution (smaller = faster)
-DETECT_CONF = 0.5
-DETECT_EVERY_N_FRAMES = 3       # default detection frequency
+# ---------------- CONFIG (YAML + defaults) ----------------
+def _load_config():
+    """
+    Load configuration from config/default.yaml.
+    Falls back to an empty dict if loading fails.
+    """
+    cfg_path = os.path.join(ROOT, "config", "default.yaml")
+    try:
+        with open(cfg_path, "r", encoding="utf-8") as f:
+            cfg = yaml.safe_load(f) or {}
+        return cfg
+    except Exception as e:
+        print(f"[WARN] Could not load config/default.yaml: {e}")
+        return {}
 
-INFERENCE_WORKER_COUNT = 1
-CHECKPOINT_PATH = os.path.join(ROOT, "checkpoints", "facesense_debug.pt")
-USE_ONNX = False
-ONNX_PATH = os.path.join(ROOT, "checkpoints", "facesense.onnx")
-USE_FP16 = True
 
-DNN_PROTO = "models/dnn/deploy.prototxt"
-DNN_MODEL = "models/dnn/res10_300x300_ssd_iter_140000_fp16.caffemodel"
+CONFIG = _load_config()
 
-STATUS_UPDATE_INTERVAL = 0.8    # seconds - UI update cadence for FPS/results
-GENDER_DEBUG = False  # Disabled to reduce console spam
-AGE_DEBUG = False     # Disabled to reduce console spam
+demo_cfg = CONFIG.get("demo", {}) or {}
+video_cfg = demo_cfg.get("video", {}) or {}
+detection_cfg = demo_cfg.get("detection", {}) or {}
+inference_cfg = demo_cfg.get("inference", {}) or {}
+facesense_cfg = inference_cfg.get("facesense", {}) or {}
+smoothing_cfg = demo_cfg.get("temporal_smoothing", {}) or {}
+age_smoothing_cfg = smoothing_cfg.get("age", {}) or {}
+tracking_cfg = demo_cfg.get("tracking", {}) or {}
+ui_cfg = demo_cfg.get("ui", {}) or {}
+debug_cfg = demo_cfg.get("debug", {}) or {}
+streamlit_cfg = demo_cfg.get("streamlit", {}) or {}
+
+paths_cfg = CONFIG.get("paths", {}) or {}
+checkpoints_cfg = paths_cfg.get("checkpoints", {}) or {}
+detectors_cfg = paths_cfg.get("detectors", {}) or {}
+
+# Stream / video settings
+CAP_WIDTH = int(video_cfg.get("capture_width", 1280))
+CAP_HEIGHT = int(video_cfg.get("capture_height", 720))
+
+# Detection settings
+DETECT_WIDTH = int(detection_cfg.get("base_width", 320))
+DETECT_CONF = float(detection_cfg.get("confidence_threshold", 0.5))
+DETECT_EVERY_N_FRAMES = int(detection_cfg.get("every_n_frames", 3))
+
+# Inference worker / backend
+INFERENCE_WORKER_COUNT = int(inference_cfg.get("worker_count", 1))
+
+CHECKPOINT_PATH = os.path.join(
+    ROOT,
+    facesense_cfg.get("checkpoint_path", checkpoints_cfg.get("facesense_torchscript", "checkpoints/facesense_debug.pt")),
+)
+USE_ONNX = bool(facesense_cfg.get("use_onnx", False))
+ONNX_PATH = os.path.join(
+    ROOT,
+    facesense_cfg.get("onnx_path", checkpoints_cfg.get("facesense_onnx", "checkpoints/facesense.onnx")),
+)
+USE_FP16 = bool(facesense_cfg.get("use_fp16", True))
+
+# Detector model files (kept as relative paths to stay compatible)
+DNN_PROTO = detectors_cfg.get("dnn_proto", "models/dnn/deploy.prototxt")
+DNN_MODEL = detectors_cfg.get("dnn_model", "models/dnn/res10_300x300_ssd_iter_140000_fp16.caffemodel")
+
+# UI / status
+STATUS_UPDATE_INTERVAL = float(ui_cfg.get("status_update_interval", 0.8))
+PAGE_TITLE = streamlit_cfg.get("page_title", "∀I-SAGE — Fast Live Demo")
+PAGE_LAYOUT = streamlit_cfg.get("layout", "wide")
+
+# Debug flags
+GENDER_DEBUG = bool(debug_cfg.get("gender_debug", False))
+AGE_DEBUG = bool(debug_cfg.get("age_debug", False))
 
 # Tuned constants for more stable predictions
-HISTORY_SIZE = 12  # increased from 8 to 12
-MIN_CONFIDENCE_THRESHOLD = 0.5  # increased from 0.4 to 0.5
-AGE_SUDDEN_CHANGE_THRESHOLD = 15  # increased from 6 to 15 years
-AGE_REQUIRED_CONSISTENT_FRAMES = 5  # increased from 3 to 5
+HISTORY_SIZE = int(smoothing_cfg.get("history_size", 12))
+MIN_CONFIDENCE_THRESHOLD = float(smoothing_cfg.get("min_confidence_threshold", 0.5))
+AGE_SUDDEN_CHANGE_THRESHOLD = float(age_smoothing_cfg.get("sudden_change_threshold", 15))
+AGE_REQUIRED_CONSISTENT_FRAMES = int(age_smoothing_cfg.get("required_consistent_frames", 5))
 
 # ---------------- GLOBAL QUEUES AND STATE (initialized early) ----------------
 gender_queue = Queue(maxsize=16)
@@ -373,7 +424,7 @@ def ethnicity_worker():
         ethnicity_queue.task_done()
 
 # ---------------- STREAMLIT UI ----------------
-st.set_page_config(page_title="∀I-SAGE — Fast Live Demo", layout="wide")
+st.set_page_config(page_title=PAGE_TITLE, layout=PAGE_LAYOUT)
 
 st.markdown(
     """
@@ -521,8 +572,8 @@ def calculate_iou(box1, box2):
 tracked_faces = {}
 next_track_id = 0
 current_frame_num = 0
-IOU_THRESHOLD = 0.3  # Minimum IoU for same position
-MAX_FRAMES_MISSING = 5  # Remove quickly - don't try to re-identify
+IOU_THRESHOLD = float(tracking_cfg.get("iou_threshold", 0.3))  # Minimum IoU for same position
+MAX_FRAMES_MISSING = int(tracking_cfg.get("max_frames_missing", 5))  # Remove quickly - don't try to re-identify
 
 def assign_track_ids(new_boxes, frame_for_features):
     """Assign stable track IDs using IoU only"""
