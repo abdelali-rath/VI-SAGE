@@ -11,8 +11,14 @@ import torch
 import torch.nn as nn
 from torch.utils.data import DataLoader, random_split
 from torchvision import transforms, models
-from utk_loader import UTKFaceGender
 from tqdm.auto import tqdm
+
+try:
+    # When run as a module: python -m src.training.train_gender.train_gender_utk
+    from .utk_loader import UTKFaceGender
+except ImportError:  # pragma: no cover - fallback for direct script execution
+    # When run directly from the project root: python src/training/train_gender/train_gender_utk.py
+    from utk_loader import UTKFaceGender
 
 # CONFIG
 PROJECT_ROOT = os.path.join(os.path.dirname(__file__), "..", "..", "..")

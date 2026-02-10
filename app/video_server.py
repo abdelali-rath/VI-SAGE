@@ -6,7 +6,7 @@ Run with:
 in bash
 """
 
-import sys, os
+import sys, os, re
 
 ROOT = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
 sys.path.append(ROOT)
@@ -29,17 +29,52 @@ import yaml
 # inference
 from src.inference.infer import get_best_inference
 
+_PLACEHOLDER_RE = re.compile(r"\$\{([^}]+)\}")
+
+
+def _lookup_path(cfg, path):
+    """Resolve a dotted placeholder path like 'paths.checkpoints.age' inside cfg."""
+    cur = cfg
+    for part in path.split("."):
+        if not isinstance(cur, dict) or part not in cur:
+            return None
+        cur = cur[part]
+    return cur
+
+
+def _resolve_placeholders(obj, root_cfg):
+    """
+    Recursively resolve ${a.b.c} placeholders inside a loaded YAML structure.
+
+    This allows config/default.yaml to reference other keys like:
+      data_dir: "${paths.data.utkface}"
+    """
+    if isinstance(obj, dict):
+        return {k: _resolve_placeholders(v, root_cfg) for k, v in obj.items()}
+    if isinstance(obj, list):
+        return [_resolve_placeholders(v, root_cfg) for v in obj]
+    if isinstance(obj, str):
+
+        def repl(match):
+            key = match.group(1)
+            val = _lookup_path(root_cfg, key)
+            return str(val) if val is not None else match.group(0)
+
+        return _PLACEHOLDER_RE.sub(repl, obj)
+    return obj
+
 
 # ---------------- CONFIG (YAML + defaults) ----------------
 def _load_config():
     """
-    Load configuration from config/default.yaml.
+    Load configuration from config/default.yaml and resolve ${...} placeholders.
     Falls back to an empty dict if loading fails.
     """
     cfg_path = os.path.join(ROOT, "config", "default.yaml")
     try:
         with open(cfg_path, "r", encoding="utf-8") as f:
             cfg = yaml.safe_load(f) or {}
+        cfg = _resolve_placeholders(cfg, cfg)
         return cfg
     except Exception as e:
         print(f"[WARN] Could not load config/default.yaml: {e}")

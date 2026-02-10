@@ -175,13 +175,6 @@ class ONNXInference:
     it will use GPU (faster). If not available, falls back to CPU provider.
     """
 
-
-class ONNXInference:
-    """
-    Lightweight ONNXRuntime-based inference. If ONNXRuntime with CUDA provider is installed,
-    it will use GPU (faster). If not available, falls back to CPU provider.
-    """
-
     def __init__(self, onnx_path: str, provider_preference: Optional[list] = None):
         """
         Initialize the ONNXInference pipeline.

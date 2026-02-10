@@ -41,10 +41,9 @@ def main():
     Note: You may need to adjust the import paths if files are moved
     or renamed in the project structure.
     """
-    from src import age_model as age_mod
-    from src import gender_model as gender_mod
-    from src import gender_infer as gender_inf_mod
-    from src import ethnicity_model as eth_mod
+    from src.models import age_model as age_mod
+    from src.models import gender_model as gender_mod
+    from src.models import ethnicity_model as eth_mod
 
     # checkpoints to try
     try_load(
@@ -67,11 +66,6 @@ def main():
         gender_mod.GenderInference,
         "checkpoints/utk_gender_model.pt",
         "cpu",
-    )
-    try_load(
-        "Gender (gender_infer.GenderInference)",
-        gender_inf_mod.GenderInference,
-        "checkpoints/utk_gender_model.pt",
     )
 
     try_load(
