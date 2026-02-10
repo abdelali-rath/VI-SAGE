@@ -84,20 +84,20 @@ Filenames should follow the pattern `age_gender_race_*.jpg`, e.g. `25_0_2_201612
 
 ### Train age regression
 
-Script: `src/training/train_age/age_prediction.py`
+Script: `src/training/train_age/train_age.py`
 
 ```bash
-python src/training/train_age/age_prediction.py
+python src/training/train_age/train_age.py
 ```
 
 Saves weights to `checkpoints/utk_age_model.pt`.
 
 ### Train gender classification
 
-Script: `src/training/train_gender/train_gender_utk.py`
+Script: `src/training/train_gender/train_gender.py`
 
 ```bash
-python src/training/train_gender/train_gender_utk.py
+python src/training/train_gender/train_gender.py
 ```
 
 Saves weights to `checkpoints/utk_gender_model.pt`.
@@ -107,7 +107,7 @@ Saves weights to `checkpoints/utk_gender_model.pt`.
 Script: `src/training/train_ethnicity/train_ethnicity.py`
 
 ```bash
-python -m src.training.train_ethnicity.train_ethnicity
+python -m src.training.train_ethnicity.train_ethnicity.pt
 ```
 
 Uses a shared `MultiTaskModel` backbone and trains the ethnicity head, saving
@@ -180,9 +180,9 @@ from experiments with this repository:
 │  │  └─ infer.py              # Helper to pick best inference backend
 │  └─ training/
 │     ├─ train_age/
-│     │  └─ age_prediction.py
+│     │  └─ train_age.py
 │     ├─ train_gender/
-│     │  ├─ train_gender_utk.py
+│     │  ├─ train_gender.py
 │     │  └─ utk_loader.py
 │     └─ train_ethnicity/
 │        ├─ train_ethnicity.py

@@ -213,7 +213,7 @@ try:
     gender_model = GenderInference(
         checkpoint_path=os.path.join(ROOT, "checkpoints", "utk_gender_model.pt"),
         device="cpu",
-        debug=False,  # Debug deaktiviert
+        debug=False,  # Debug disabled
     )
 except Exception as e:
     print(f"Warning: Gender model failed to load: {e}")
@@ -223,7 +223,7 @@ try:
     age_model = AgeInference(
         checkpoint_path=os.path.join(ROOT, "checkpoints", "utk_age_model.pt"),
         device="cpu",
-        debug=False,  # Debug deaktiviert
+        debug=False,  # Debug disabled
     )
 except Exception as e:
     print(f"Warning: Age model failed to load: {e}")
@@ -266,7 +266,7 @@ def smooth_prediction(track_id, pred_type, new_value, new_confidence=None):
     if pred_type == "age":
         # Ignore predictions with extreme jumps immediately
         if len(history) > 0:
-            recent_ages = [h for h in history[-5:]]  # Letzte 5 Werte
+            recent_ages = [h for h in history[-5:]]  # Last 5 values
             if len(recent_ages) > 0:
                 median_recent = np.median(recent_ages)
                 # Ignore new values that deviate > 15 years from the median
@@ -308,7 +308,7 @@ def smooth_prediction(track_id, pred_type, new_value, new_confidence=None):
                 max_change_per_frame = 2.0  # maximum 2 years change per frame
 
                 if abs(weighted_age - prev_age) > max_change_per_frame:
-                    # Interpoliere schrittweise
+                    # Interpolate stepwise towards the new value
                     if weighted_age > prev_age:
                         weighted_age = prev_age + max_change_per_frame
                     else:
@@ -346,7 +346,7 @@ def smooth_prediction(track_id, pred_type, new_value, new_confidence=None):
         for idx, (val, conf) in enumerate(history):
             if val not in vote_dict:
                 vote_dict[val] = 0
-            # Neuere Vorhersagen zählen exponentiell mehr (erhöht von 1.2 auf 1.3)
+            # Newer predictions count exponentially more (factor increased from 1.2 to 1.3)
             weight = conf * (1.3**idx)
             vote_dict[val] += weight
 

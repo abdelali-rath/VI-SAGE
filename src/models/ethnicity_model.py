@@ -182,7 +182,7 @@ class EthnicityInference:
     Handles model loading, preprocessing, and prediction for ethnicity classification.
     """
 
-    # Ethnicity class labels (kurz, DE)
+    # Ethnicity class labels (short, display names)
     ETHNICITY_LABELS = {
         0: "White / Caucasian",
         1: "Black / African",

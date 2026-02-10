@@ -2,7 +2,7 @@
 Training script for age regression on the UTKFace dataset using MobileNetV3.
 
 Usage (from project root):
-    python src/training/train_age/age_prediction.py
+    python src/training/train_age/train_age.py
 """
 
 import os
@@ -17,10 +17,10 @@ from tqdm import tqdm
 # =========================
 # CONFIG
 # =========================
-# Pfad relativ zum Projektroot machen, damit das Skript auch
-# von unterschiedlichen Arbeitsverzeichnissen gestartet werden kann.
+# Build path relative to the project root so the script can be started
+# from different working directories without breaking imports/paths.
 PROJECT_ROOT = os.path.join(os.path.dirname(__file__), "..", "..", "..")
-DATA_DIR = os.path.join(PROJECT_ROOT, "data", "UTKFace")  # Ordner mit Bildern
+DATA_DIR = os.path.join(PROJECT_ROOT, "data", "UTKFace")  # Folder containing images
 EPOCHS = 20
 BATCH_SIZE = 32
 LR = 1e-4
@@ -93,10 +93,10 @@ transform = transforms.Compose(
 class AgeNet(nn.Module):
     def __init__(self):
         """
-        Einfaches Altersregressionsmodell auf Basis von MobileNetV3-Large.
+        Simple age regression model based on MobileNetV3‑Large.
 
-        Verwendet das ImageNet‑vortrainierte Backbone und ersetzt den
-        Klassifikationskopf durch einen linearen Regressor (1 Output).
+        Uses the ImageNet‑pretrained backbone and replaces the original
+        classification head with a linear regressor (single output).
         """
         super().__init__()
         self.backbone = models.mobilenet_v3_large(weights="IMAGENET1K_V1")
@@ -106,13 +106,13 @@ class AgeNet(nn.Module):
 
     def forward(self, x):
         """
-        Forward-Pass.
+        Forward pass.
 
         Args:
-            x: Batch von Bildern der Form [B, 3, H, W].
+            x: Batch of images with shape [B, 3, H, W].
 
         Returns:
-            Tensor der Form [B] mit vorhergesagtem Alter.
+            Tensor of shape [B] with the predicted age.
         """
         x = self.backbone(x)
         return self.regressor(x).squeeze(1)

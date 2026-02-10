@@ -3,7 +3,7 @@ Training script for gender classification on the UTKFace dataset using
 MobileNetV3-Large as a fast backbone.
 
 Usage (from project root):
-    python src/training/train_gender/train_gender_utk.py
+    python src/training/train_gender/train_gender.py
 """
 
 import os
@@ -17,7 +17,7 @@ try:
     # When run as a module: python -m src.training.train_gender.train_gender_utk
     from .utk_loader import UTKFaceGender
 except ImportError:  # pragma: no cover - fallback for direct script execution
-    # When run directly from the project root: python src/training/train_gender/train_gender_utk.py
+    # When run directly from the project root: python src/training/train_gender/train_gender.py
     from utk_loader import UTKFaceGender
 
 # CONFIG
