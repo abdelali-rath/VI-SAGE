@@ -10,9 +10,9 @@ import sys, os
 ROOT = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
 sys.path.append(ROOT)
 
-from src.gender_model import GenderInference
-from src.age_model import AgeInference
-from src.ethnicity_model import EthnicityInference
+from src.models.gender_model import GenderInference
+from src.models.age_model import AgeInference
+from src.models.ethnicity_model import EthnicityInference
 from torchvision import transforms
 import streamlit as st
 import cv2
@@ -25,7 +25,7 @@ from PIL import Image
 import platform
 
 # inference
-from src.infer import get_best_inference
+from src.inference.infer import get_best_inference
 
 # ---------------- CONFIG (defaults) ----------------
 CAP_WIDTH = 1280
