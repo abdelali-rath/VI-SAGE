@@ -159,7 +159,67 @@ of editing Python constants in `app/video_server.py` and the training scripts.
 - Standard **ImageNet normalization** and common data‑augmentation (e.g. `Resize`, `RandomHorizontalFlip`)  
   are applied in the training scripts for better generalization.
 
-<img width="1923" height="800" alt="output-onlinepngtools (34)" src="https://github.com/user-attachments/assets/7237f555-5089-4bbf-8fd0-08c9773802eb" />
+
+
+### Dataset distribution overview 📊
+
+The following figure illustrates the distribution of the dataset across:
+
+* Age groups
+* Gender
+* Ethnicity classes
+
+<img width="1923" height="800" alt="UTKFace distribution overview" src="https://github.com/user-attachments/assets/7237f555-5089-4bbf-8fd0-08c9773802eb" />
+
+#### Age distribution
+
+* The majority of samples fall into the **21–40** range.
+* The **0–20** and **41–60** groups are moderately represented.
+* The **61–80** group is significantly underrepresented.
+
+**Implication:**
+The model is expected to perform best on young adults, while predictions for elderly individuals may show higher error rates.
+
+---
+
+#### Gender distribution
+
+* The dataset is relatively balanced between **male** and **female** samples.
+* Slight imbalance may still result in small performance differences.
+
+**Implication:**
+Separate evaluation metrics per gender are recommended to ensure fairness.
+
+---
+
+#### Ethnicity distribution
+
+* The largest class is **White**.
+* Other groups (Black, Indian, Asian) are noticeably smaller.
+* The **“Other”** category is strongly underrepresented.
+
+**Implication:**
+Class imbalance can lead to biased predictions favoring dominant groups.
+To mitigate this, strategies such as:
+
+* class-weighted loss functions
+* oversampling minority classes
+* per-class precision/recall reporting
+
+are strongly recommended.
+
+---
+
+### Why this matters ⚖️
+
+Dataset imbalance directly impacts fairness and robustness.
+All reported evaluation results in this project therefore include:
+
+* Per-class metrics
+* Confusion matrices
+* Explicit discussion of potential bias
+
+This is especially critical when predicting sensitive attributes such as ethnicity.
 
 ---
 
