@@ -188,28 +188,42 @@ from experiments with this repository:
 /
 ├─ app/
 │  └─ video_server.py          # Streamlit webcam demo
+├─ checkpoints/                # (created at runtime) trained weights
 ├─ config/
 │  └─ default.yaml             # Central configuration
-├─ src/
-│  ├─ models/                  # Age / gender / ethnicity models and multi‑task backbone
-│  ├─ inference/
-│  │  └─ infer.py              # Helper to pick best inference backend
-│  └─ training/
-│     ├─ train_age/
-│     │  └─ train_age.py
-│     ├─ train_gender/
-│     │  ├─ train_gender.py
-│     │  └─ utk_loader.py
-│     └─ train_ethnicity/
-│        ├─ train_ethnicity.py
-│        └─ utk_loader.py
-├─ tests/
-│  └─ check_load_models.py     # Simple sanity check for model loading
-├─ checkpoints/                # (created at runtime) trained weights
 ├─ data/
-│  └─ UTKFace/                 # expected location of UTKFace images
+│  ├─ __init__.py              # Package marker for dataset helpers
+│  └─ UTKFace/                 # Expected UTKFace images and metadata
+├─ requirements.txt
 ├─ README.md
-└─ requirements.txt
+├─ src/
+│  ├─ inference/
+│  │  └─ infer.py              # Backend selector for CPU/GPU/TorchScript/ONNX
+│  ├─ models/
+│  │  ├─ age_model.py
+│  │  ├─ gender_model.py
+│  │  ├─ ethnicity_model.py
+│  │  └─ models.py
+│  ├─ training/
+│  │  ├─ train_age/
+│  │  │  └─ train_age.py
+│  │  ├─ train_gender/
+│  │  │  ├─ train_gender.py
+│  │  │  └─ utk_loader.py
+│  │  └─ train_ethnicity/
+│  │     ├─ train_ethnicity.py
+│  │     └─ utk_loader.py
+│  └─ utils/
+│     ├─ boxes.py
+│     └─ config.py
+└─ tests/
+   ├─ conftest.py
+   ├─ test_boxes.py
+   ├─ test_config.py
+   ├─ test_datasets.py
+   ├─ test_inference.py
+   ├─ test_models.py
+   └─ check_load_models.py     # Sanity check for model loading
 ```
 
 ---
