@@ -123,7 +123,7 @@ Saves weights to `checkpoints/utk_gender_model.pt`.
 Script: `src/training/train_ethnicity/train_ethnicity.py`
 
 ```bash
-python -m src.training.train_ethnicity.train_ethnicity.pt
+python -m src.training.train_ethnicity.train_ethnicity
 ```
 
 Uses a shared `MultiTaskModel` backbone and trains the ethnicity head, saving
