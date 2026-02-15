@@ -187,43 +187,43 @@ from experiments with this repository:
 ```bash
 /
 ├─ app/
-│  └─ video_server.py          # Streamlit webcam demo
-├─ checkpoints/                # (created at runtime) trained weights
+│  └─ video_server.py           # Streamlit webcam demo
+├─ checkpoints/                 # (created at runtime) trained weights
 ├─ config/
-│  └─ default.yaml             # Central configuration
+│  └─ default.yaml              # Central configuration
 ├─ data/
-│  ├─ __init__.py              # Package marker for dataset helpers
-│  └─ UTKFace/                 # Expected UTKFace images and metadata
-├─ requirements.txt
-├─ README.md
+│  ├─ __init__.py               # Package marker for dataset helpers
+│  └─ UTKFace/                  # Expected UTKFace images and metadata
+├─ requirements.txt             # pip dependency list used in installs
+├─ README.md                    # project overview and usage guidance
 ├─ src/
 │  ├─ inference/
-│  │  └─ infer.py              # Backend selector for CPU/GPU/TorchScript/ONNX
+│  │  └─ infer.py               # Backend selector for CPU/GPU/TorchScript/ONNX
 │  ├─ models/
-│  │  ├─ age_model.py
-│  │  ├─ gender_model.py
-│  │  ├─ ethnicity_model.py
-│  │  └─ models.py
+│  │  ├─ age_model.py           # MobileNet-based age regression head
+│  │  ├─ gender_model.py        # Gender classification network + loader
+│  │  ├─ ethnicity_model.py     # Ethnicity head + wrapper for inference
+│  │  └─ models.py              # MultiTaskModel + checkpoint helpers
 │  ├─ training/
 │  │  ├─ train_age/
-│  │  │  └─ train_age.py
+│  │  │  └─ train_age.py        # Script to train the age regression model
 │  │  ├─ train_gender/
-│  │  │  ├─ train_gender.py
-│  │  │  └─ utk_loader.py
+│  │  │  ├─ train_gender.py     # Gender training loop and CLI
+│  │  │  └─ utk_loader.py       # Data loader for UTKFace labels + transforms
 │  │  └─ train_ethnicity/
-│  │     ├─ train_ethnicity.py
-│  │     └─ utk_loader.py
+│  │     ├─ train_ethnicity.py  # Fine-tunes ethnicity head on UTKFace
+│  │     └─ utk_loader.py       # Shared loader utilities for ethnicity
 │  └─ utils/
-│     ├─ boxes.py
-│     └─ config.py
+│     ├─ boxes.py               # IoU / box helpers used by detection & tests
+│     └─ config.py              # YAML parsing + placeholder resolution
 └─ tests/
-   ├─ conftest.py
-   ├─ test_boxes.py
-   ├─ test_config.py
-   ├─ test_datasets.py
-   ├─ test_inference.py
-   ├─ test_models.py
-   └─ check_load_models.py     # Sanity check for model loading
+   ├─ conftest.py               # pytest fixtures (image tensor, temp checkpoints, root path)
+   ├─ test_boxes.py             # bounding box IoU helpers for detection utilities
+   ├─ test_config.py            # YAML placeholder lookup / resolution behavior
+   ├─ test_datasets.py          # UTKAgeDataset filename parsing and tensor output
+   ├─ test_inference.py         # TorchInference / get_best_inference output sanity checks
+   ├─ test_models.py            # age/gender/multi-task forward shapes + checkpoint load/save
+   └─ check_load_models.py      # manual script exercising model wrappers + checkpoints
 ```
 
 ---
