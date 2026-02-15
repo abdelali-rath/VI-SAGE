@@ -98,6 +98,8 @@ If `torch` cannot be imported, those tests are skipped.
 All training scripts expect the **UTKFace** dataset in `data/UTKFace`.  
 Filenames should follow the pattern `age_gender_race_*.jpg`, e.g. `25_0_2_201612312359.jpg`.
 
+Download the dataset from [UTKFace official site](https://susanqq.github.io/UTKFace/).
+
 ### Train age regression
 
 Script: `src/training/train_age/train_age.py`
