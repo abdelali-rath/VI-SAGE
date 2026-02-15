@@ -1,0 +1,171 @@
+"""
+Training script for age regression on the UTKFace dataset using MobileNetV3.
+
+Usage (from project root):
+    python src/training/train_age/train_age.py
+"""
+
+import os
+import sys
+import torch
+import torch.nn as nn
+from torch.utils.data import Dataset, DataLoader
+from torchvision import transforms, models
+from PIL import Image
+from tqdm import tqdm
+
+# =========================
+# CONFIG
+# =========================
+# Build path relative to the project root so the script can be started
+# from different working directories without breaking imports/paths.
+PROJECT_ROOT = os.path.join(os.path.dirname(__file__), "..", "..", "..")
+DATA_DIR = os.path.join(PROJECT_ROOT, "data", "UTKFace")  # Folder containing images
+EPOCHS = 20
+BATCH_SIZE = 32
+LR = 1e-4
+CHECKPOINT = os.path.join(PROJECT_ROOT, "checkpoints", "utk_age_model.pt")
+
+device = "cuda" if torch.cuda.is_available() else "cpu"
+
+
+# =========================
+# DATASET
+# =========================
+class UTKAgeDataset(Dataset):
+    def __init__(self, root, transform=None):
+        """
+        Dataset for UTKFace age regression.
+
+        Expects filenames of the form:
+            age_gender_race_*.jpg
+        and uses only the age value before the first underscore.
+
+        Args:
+            root: Wurzelverzeichnis mit UTKFace-Bildern.
+            transform: Optionaler Torchvision-Transform-Pipeline.
+        """
+        self.files = [f for f in os.listdir(root) if f.endswith(".jpg") and "_" in f]
+        self.root = root
+        self.transform = transform
+
+    def __len__(self):
+        """Return the number of available images."""
+        return len(self.files)
+
+    def __getitem__(self, idx):
+        """
+        Load one image and its associated age value.
+
+        Returns:
+            tuple[Tensor, Tensor]: (image tensor, age as float32 tensor).
+        """
+        fname = self.files[idx]
+
+        # age_gender_race_xxx.jpg
+        age = int(fname.split("_")[0])
+
+        img_path = os.path.join(self.root, fname)
+        img = Image.open(img_path).convert("RGB")
+
+        if self.transform:
+            img = self.transform(img)
+
+        age = torch.tensor(age, dtype=torch.float32)
+        return img, age
+
+
+# =========================
+# TRANSFORM
+# =========================
+transform = transforms.Compose(
+    [
+        transforms.Resize((224, 224)),
+        transforms.ToTensor(),
+        transforms.Normalize([0.485, 0.456, 0.406], [0.229, 0.224, 0.225]),
+    ]
+)
+
+
+# =========================
+# MODEL
+# =========================
+class AgeNet(nn.Module):
+    def __init__(self):
+        """
+        Simple age regression model based on MobileNetV3‑Large.
+
+        Uses the ImageNet‑pretrained backbone and replaces the original
+        classification head with a linear regressor (single output).
+        """
+        super().__init__()
+        self.backbone = models.mobilenet_v3_large(weights="IMAGENET1K_V1")
+        in_features = self.backbone.classifier[3].in_features
+        self.backbone.classifier[3] = nn.Identity()
+        self.regressor = nn.Linear(in_features, 1)
+
+    def forward(self, x):
+        """
+        Forward pass.
+
+        Args:
+            x: Batch of images with shape [B, 3, H, W].
+
+        Returns:
+            Tensor of shape [B] with the predicted age.
+        """
+        x = self.backbone(x)
+        return self.regressor(x).squeeze(1)
+
+
+# =========================
+# TRAIN
+# =========================
+def train():
+    """
+    Run training for the age model.
+
+    Loads the UTKFace dataset, trains the model for a fixed number
+    of epochs and finally saves the weights to ``CHECKPOINT``.
+    """
+    dataset = UTKAgeDataset(DATA_DIR, transform)
+    loader = DataLoader(
+        dataset, batch_size=BATCH_SIZE, shuffle=True, num_workers=4, pin_memory=True
+    )
+
+    model = AgeNet().to(device)
+    criterion = nn.L1Loss()  # MAE
+    optimizer = torch.optim.Adam(model.parameters(), lr=LR)
+
+    for epoch in range(EPOCHS):
+        model.train()
+        total_loss = 0
+
+        pbar = tqdm(loader, desc=f"Epoch {epoch+1}/{EPOCHS}")
+        for imgs, ages in pbar:
+            imgs = imgs.to(device)
+            ages = ages.to(device)
+
+            preds = model(imgs)
+            loss = criterion(preds, ages)
+
+            optimizer.zero_grad()
+            loss.backward()
+            optimizer.step()
+
+            total_loss += loss.item()
+            pbar.set_postfix(MAE=loss.item())
+
+        avg = total_loss / len(loader)
+        print(f"Epoch {epoch+1}: MAE = {avg:.2f}")
+
+    os.makedirs(os.path.dirname(CHECKPOINT), exist_ok=True)
+    torch.save(model.state_dict(), CHECKPOINT)
+    print("✅ Model saved:", CHECKPOINT)
+
+
+# =========================
+# MAIN
+# =========================
+if __name__ == "__main__":
+    train()

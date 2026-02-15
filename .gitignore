@@ -1,0 +1,114 @@
+# -----------------------------
+# Python
+# -----------------------------
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+*.pdb
+*.pkl
+*.pickle
+*.log
+
+# Virtual environments
+venv/
+env/
+.venv/
+ENV/
+*.env
+
+# Jupyter / IPython
+.ipynb_checkpoints/
+*.ipynb
+
+# -----------------------------
+# Streamlit
+# -----------------------------
+streamlit/
+.streamlit/*.log
+.streamlit/secrets.toml
+
+# Cached data
+cache/
+tmp/
+temp/
+*.tmp
+
+# -----------------------------
+# Models / Checkpoints
+# -----------------------------
+checkpoints/
+models/*.caffemodel
+models/*.prototxt
+models/*.onnx
+models/*.pt
+
+# Huggingface / Weights
+*.bin
+*.safetensors
+
+# -----------------------------
+# Build / Dist
+# -----------------------------
+build/
+dist/
+*.egg-info/
+*.egg
+
+# -----------------------------
+# OS-specific
+# -----------------------------
+
+# macOS
+.DS_Store
+.AppleDouble
+.LSOverride
+.idea/
+.vscode/
+*~
+
+# Windows
+Thumbs.db
+Desktop.ini
+
+# Linux
+*~
+
+# -----------------------------
+# Video / Image processing artifacts
+# -----------------------------
+*.mp4
+*.avi
+*.mov
+*.jpg
+*.jpeg
+*.png
+*.webp
+
+# -----------------------------
+# User uploads / local test data
+# -----------------------------
+uploads/
+data/
+datasets/
+
+# -----------------------------
+# Backup & swap files
+# -----------------------------
+*.bak
+*.swp
+*.swo
+*.orig
+
+# -----------------------------
+# PyTorch Lightning / Logs
+# -----------------------------
+lightning_logs/
+tensorboard/
+runs/
+
+# -----------------------------
+# Generated heatmaps / output
+# -----------------------------
+output/
+results/
