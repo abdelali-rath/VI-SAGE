@@ -6,7 +6,7 @@ Run with:
 in bash
 """
 
-import sys, os, re
+import sys, os
 
 ROOT = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
 sys.path.append(ROOT)
@@ -28,40 +28,11 @@ import yaml
 
 # inference
 from src.inference.infer import get_best_inference
-
-_PLACEHOLDER_RE = re.compile(r"\$\{([^}]+)\}")
-
-
-def _lookup_path(cfg, path):
-    """Resolve a dotted placeholder path like 'paths.checkpoints.age' inside cfg."""
-    cur = cfg
-    for part in path.split("."):
-        if not isinstance(cur, dict) or part not in cur:
-            return None
-        cur = cur[part]
-    return cur
-
-
-def _resolve_placeholders(obj, root_cfg):
-    """
-    Recursively resolve ${a.b.c} placeholders inside a loaded YAML structure.
-
-    This allows config/default.yaml to reference other keys like:
-      data_dir: "${paths.data.utkface}"
-    """
-    if isinstance(obj, dict):
-        return {k: _resolve_placeholders(v, root_cfg) for k, v in obj.items()}
-    if isinstance(obj, list):
-        return [_resolve_placeholders(v, root_cfg) for v in obj]
-    if isinstance(obj, str):
-
-        def repl(match):
-            key = match.group(1)
-            val = _lookup_path(root_cfg, key)
-            return str(val) if val is not None else match.group(0)
-
-        return _PLACEHOLDER_RE.sub(repl, obj)
-    return obj
+from src.utils.config import (
+    lookup_path as _lookup_path,
+    resolve_placeholders as _resolve_placeholders,
+)
+from src.utils.boxes import calculate_iou
 
 
 # ---------------- CONFIG (YAML + defaults) ----------------
@@ -617,27 +588,6 @@ def detect_haar(cascade, frame_bgr, scale_factor=1.1, min_neighbors=5):
         x1, y1, x2, y2 = x, y, x + w, y + h
         res.append((x1, y1, x2, y2, None))
     return res
-
-
-def calculate_iou(box1, box2):
-    """Calculate Intersection over Union between two boxes"""
-    x1_1, y1_1, x2_1, y2_1 = box1[:4]
-    x1_2, y1_2, x2_2, y2_2 = box2[:4]
-
-    x1_i = max(x1_1, x1_2)
-    y1_i = max(y1_1, y1_2)
-    x2_i = min(x2_1, x2_2)
-    y2_i = min(y2_1, y2_2)
-
-    if x2_i < x1_i or y2_i < y1_i:
-        return 0.0
-
-    intersection = (x2_i - x1_i) * (y2_i - y1_i)
-    area1 = (x2_1 - x1_1) * (y2_1 - y1_1)
-    area2 = (x2_2 - x1_2) * (y2_2 - y1_2)
-    union = area1 + area2 - intersection
-
-    return intersection / union if union > 0 else 0.0
 
 
 # Global variables for face tracking

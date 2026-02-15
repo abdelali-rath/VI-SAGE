@@ -37,9 +37,9 @@ class AgeModel(nn.Module):
             x (torch.Tensor): Input tensor of shape [B, 3, H, W].
 
         Returns:
-            torch.Tensor: Predicted age values.
+            torch.Tensor: Predicted age values of shape [B].
         """
-        return self.backbone(x)
+        return self.backbone(x).squeeze(-1)
 
 
 # ---------------------------------------------------------

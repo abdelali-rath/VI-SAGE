@@ -77,6 +77,22 @@ Notes:
 
 ---
 
+## Tests 🧪
+
+From the project root run:
+
+```bash
+pytest tests/ -v
+```
+
+- **Config & utils**: `test_config.py` (YAML `${...}` placeholder resolution), `test_boxes.py` (IoU). No PyTorch required.
+- **Models**: `test_models.py` (forward shapes, save/load checkpoint). Requires `torch`.
+- **Inference**: `test_inference.py` (TorchInference output structure). Requires `torch` and Pillow.
+- **Datasets**: `test_datasets.py` (UTK age dataset parsing). Requires `torch`.  
+If `torch` cannot be imported, those tests are skipped.
+
+---
+
 ## Training scripts 🏋️‍♀️
 
 All training scripts expect the **UTKFace** dataset in `data/UTKFace`.  
